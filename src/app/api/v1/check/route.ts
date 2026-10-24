@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { json, readIngest } from "@/lib/api";
+import { run } from "@/lib/db";
 import { processLiveChat } from "@/lib/audit/live";
 import { limitError, projectOwner } from "@/lib/billing";
 import { DIAGNOSIS_TEXT } from "@/lib/judge/evidence";
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
   const area = g.topic || topicFor(question, g.sourceDoc);
   const autonomy = areaAutonomy(r.project.id, area);
   const decision = decisionFor(g.verdict, g.severity, autonomy);
+  run("INSERT INTO presend_checks (project_id, decision, verdict, created_at) VALUES (?, ?, ?, ?)", r.project.id, decision, g.verdict, new Date().toISOString());
   return json({
     decision,
     verdict: g.verdict, label: VERDICT_LABELS[g.verdict], severity: g.severity, reason: g.reason,

@@ -198,6 +198,22 @@ export async function createDemoProject(userId: number): Promise<number> {
     // A heartbeat for a nightly job.
     run("INSERT INTO job_heartbeats (project_id, name, token, every_min, grace_min, status, last_ping_at, created_at) VALUES (?, 'Nightly invoice sync (demo)', ?, 1440, 288, 'up', ?, ?)", id, `hb_demo_${id}`, new Date(nowMs - 210 * 60000).toISOString(), isoDaysAgo(14));
     run("INSERT INTO incidents (project_id, module, code, severity, title, detail, dedupe_key) VALUES (?, 'chatbot', 'HALLUCINATION', 'high', 'Chatbot promised a refund on sale items', 'The bot told 3 customers that sale items get a full refund. Your policy says store credit only.', 'demo:refund')", id);
+    // Proof-of-value history: pre-send check decisions and problems that were found and fixed.
+    for (let d = 0; d < 28; d++) {
+      for (let k = 0; k < (d % 3 === 0 ? 2 : d % 2); k++) run("INSERT INTO presend_checks (project_id, decision, verdict, created_at) VALUES (?, ?, 'hallucination', ?)", id, (d + k) % 4 === 0 ? "review" : "block", isoDaysAgo(d, 9 + k));
+      if (d % 2 === 0) run("INSERT INTO presend_checks (project_id, decision, verdict, created_at) VALUES (?, 'allow', 'correct', ?)", id, isoDaysAgo(d, 11));
+    }
+    for (const [d, code, module, title, mins] of [
+      [3, "SILENT_FAILURE", "workflows", "Order sync succeeded with 0 orders", 38],
+      [9, "WORKFLOW_FAILED", "workflows", "Review replies failed: OpenAI 429", 22],
+      [12, "HEARTBEAT_MISSED", "workflows", "Nightly invoice sync didn't run", 95],
+      [17, "LOOP_DETECTED", "agents", "Refund helper agent stuck in a loop", 15],
+      [21, "UPTIME_DOWN", "uptime", "Chat widget API down", 7],
+    ] as const) {
+      const at = isoDaysAgo(d, 8);
+      run("INSERT INTO incidents (project_id, module, code, severity, title, detail, resolved, created_at, resolved_at) VALUES (?, ?, ?, 'high', ?, 'Resolved automatically when it recovered.', 1, ?, ?)",
+        id, module, code, title, at.replace("T", " ").slice(0, 19), new Date(new Date(at).getTime() + mins * 60000).toISOString().replace("T", " ").slice(0, 19));
+    }
     return id;
   });
 

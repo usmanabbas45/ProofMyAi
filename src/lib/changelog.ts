@@ -8,6 +8,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-24", title: "Proof of value: a client report in their own numbers", tag: "New",
+    items: [
+      "🏆 New \"Proof of value\" page: wrong replies blocked before reaching a customer, replies held for a person, risky AI actions stopped (and what they were worth), silent failures caught, problems fixed and how fast, all compared with the period before.",
+      "🔗 Send it to a client as a read-only link with your agency's name on it, or save it as a PDF. Pick the last 30 days or any recent month.",
+      "📏 Every number is a count of real events. Nothing is estimated.",
+    ],
+  },
+  {
     date: "2026-10-23", title: "Free n8n Workflow Checker", tag: "New",
     items: [
       "🔍 Paste any n8n workflow at /tools/n8n-workflow-checker and get a risk score in seconds: API keys pasted in nodes, webhooks anyone can call, errors that pass as success, missing retries, no error workflow, unchecked empty results and pinned test data, each with the exact fix.",

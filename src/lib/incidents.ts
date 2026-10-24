@@ -35,7 +35,7 @@ export function resolveIncidents(projectId: number, dedupeKey: string): void {
     "SELECT module, code, severity, title FROM incidents WHERE project_id = ? AND dedupe_key = ? AND resolved = 0", projectId, dedupeKey,
   );
   if (!open.length) return;
-  run("UPDATE incidents SET resolved = 1 WHERE project_id = ? AND dedupe_key = ? AND resolved = 0", projectId, dedupeKey);
+  run("UPDATE incidents SET resolved = 1, resolved_at = datetime('now') WHERE project_id = ? AND dedupe_key = ? AND resolved = 0", projectId, dedupeKey);
   for (const inc of open) {
     void notify({ projectId, kind: "resolved", module: inc.module, code: inc.code, severity: inc.severity, title: inc.title, detail: "This problem is no longer happening." })
       .catch((err) => console.error("[alerts] failed:", err));

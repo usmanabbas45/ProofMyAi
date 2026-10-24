@@ -1313,3 +1313,12 @@ html.is-scrolling .beam-hub-mark::after { animation-play-state: paused; }
 .scan-finding summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .scan-finding summary::-webkit-details-marker { display: none; }
 kbd { font: 600 12px/1 var(--mono, monospace); padding: 2px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--surface-2); }
+
+/* Proof of value report */
+.value-report h3 { margin: 22px 0 10px; }
+.value-stat { display: flex; flex-direction: column; gap: 4px; }
+.value-diff { font-size: 13px; font-weight: 600; }
+.value-ok { color: var(--ok); }
+.value-warn { color: var(--warn); }
+.value-hero { border-color: var(--brand); background: linear-gradient(135deg, var(--brand-soft), transparent 70%); }
+.value-highlights { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 17px; }

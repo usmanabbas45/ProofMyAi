@@ -30,6 +30,7 @@ import { applyArticleFix, fixAvailability, generateArticleFix, generateSafePromp
 import { JudgeError } from "@/lib/judge/llm";
 import { renderBody, runSuite } from "@/lib/tests/runner";
 import { pollSource } from "@/lib/workflows/pollers";
+import { revokeValueShare, valueShareToken } from "@/lib/valuereport";
 import { isVerified, VERIFY_FIRST } from "@/lib/verify";
 import { acceptSuggestions, dismissSuggestions, generateTestSuggestions } from "@/lib/testgen";
 import { decideApproval } from "@/lib/approvals";
@@ -244,7 +245,7 @@ export async function deleteWatchAction(form: FormData) {
   const back = watchBack(form, p.id);
   const id = Number(form.get("watchId"));
   run("DELETE FROM watches WHERE id = ? AND project_id = ?", id, p.id);
-  run("UPDATE incidents SET resolved = 1 WHERE project_id = ? AND dedupe_key = ? AND resolved = 0", p.id, `watch:${id}`);
+  run("UPDATE incidents SET resolved = 1, resolved_at = datetime('now') WHERE project_id = ? AND dedupe_key = ? AND resolved = 0", p.id, `watch:${id}`);
   done(back, { ok: "Watch deleted." });
 }
 
@@ -288,6 +289,18 @@ export async function shareAuditAction(form: FormData) {
   }
   run("UPDATE audits SET share_token = ? WHERE id = ?", randomToken(18), auditId);
   done(path, { ok: "Share link created. Anyone with the link can view this report (read-only)." });
+}
+
+/** Turns the project's "Proof of value" client link on or off. */
+export async function shareValueReportAction(form: FormData) {
+  const p = await project(form);
+  const path = `/app/p/${p.id}/value`;
+  if (form.get("revoke")) {
+    revokeValueShare(p.id);
+    done(path, { ok: "Client link turned off. The old link no longer works." });
+  }
+  valueShareToken(p.id, true);
+  done(path, { ok: "Client link created. Anyone with the link can view this report (read-only)." });
 }
 
 // ---------- Chatbot tests ----------
@@ -407,8 +420,8 @@ export async function deleteSourceAction(form: FormData) {
 export async function resolveIncidentAction(form: FormData) {
   const p = await project(form);
   const id = form.get("incidentId");
-  if (id === "all") run("UPDATE incidents SET resolved = 1 WHERE project_id = ?", p.id);
-  else run("UPDATE incidents SET resolved = 1 WHERE id = ? AND project_id = ?", Number(id), p.id);
+  if (id === "all") run("UPDATE incidents SET resolved = 1, resolved_at = datetime('now') WHERE project_id = ?", p.id);
+  else run("UPDATE incidents SET resolved = 1, resolved_at = datetime('now') WHERE id = ? AND project_id = ?", Number(id), p.id);
   done(`/app/p/${p.id}/incidents`, { ok: "Marked as resolved." });
 }
 
