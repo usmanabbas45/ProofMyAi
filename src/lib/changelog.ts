@@ -8,6 +8,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-25", title: "Client reports that send themselves", tag: "New",
+    items: [
+      "📬 On the Proof of value page, add your client's email addresses and pick weekly (every Monday) or monthly (on the 1st). ProofMyAI emails them the report automatically: what was blocked, caught and fixed, with a link to the full report.",
+      "🏷️ The email carries your agency's name, not ProofMyAI's, and your client's replies come straight to you.",
+      "🧪 \"Send me a test first\" shows you exactly what your client will receive.",
+    ],
+  },
+  {
     date: "2026-10-24", title: "Proof of value: a client report in their own numbers", tag: "New",
     items: [
       "🏆 New \"Proof of value\" page: wrong replies blocked before reaching a customer, replies held for a person, risky AI actions stopped (and what they were worth), silent failures caught, problems fixed and how fast, all compared with the period before.",

@@ -33,6 +33,8 @@ export interface Block {
   cta?: { label: string; url: string };
   /** Small text after the button. */
   after?: string[];
+  /** White-label: an agency's name replaces the ProofMyAI header and footer links (client reports). */
+  brand?: string;
 }
 
 function renderHtml(preheader: string, b: Block, footer: string): string {
@@ -56,7 +58,7 @@ function renderHtml(preheader: string, b: Block, footer: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f9;"><tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
 <tr><td style="padding:0 4px 16px;">
-  <a href="${esc(SITE_URL)}" style="text-decoration:none;color:${TEXT};font-size:18px;font-weight:800;"><img src="${esc(SITE_URL)}/icon.png" width="30" height="30" alt="ProofMyAI" style="display:inline-block;width:30px;height:30px;border:0;border-radius:8px;margin-right:9px;vertical-align:middle;"><span style="vertical-align:middle;">ProofMyAI</span></a>
+  ${b.brand ? `<span style="color:${TEXT};font-size:18px;font-weight:800;">${esc(b.brand)}</span>` : `<a href="${esc(SITE_URL)}" style="text-decoration:none;color:${TEXT};font-size:18px;font-weight:800;"><img src="${esc(SITE_URL)}/icon.png" width="30" height="30" alt="ProofMyAI" style="display:inline-block;width:30px;height:30px;border:0;border-radius:8px;margin-right:9px;vertical-align:middle;"><span style="vertical-align:middle;">ProofMyAI</span></a>`}
 </td></tr>
 <tr><td style="background:#ffffff;border:1px solid ${BORDER};border-radius:14px;padding:30px 28px;">
   ${icon}${badge}
@@ -65,8 +67,8 @@ function renderHtml(preheader: string, b: Block, footer: string): string {
 </td></tr>
 <tr><td style="padding:18px 8px;text-align:center;font-size:12px;line-height:1.6;color:${MUTED};">
   ${footer}<br>
-  <a href="${esc(appUrl())}/app" style="color:${MUTED};">Dashboard</a> &middot; <a href="${esc(SITE_URL)}/status" style="color:${MUTED};">Status</a> &middot; <a href="${esc(SITE_URL)}/support" style="color:${MUTED};">Support</a> &middot; <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color:${MUTED};">${esc(SUPPORT_EMAIL)}</a><br>
-  ProofMyAI &middot; Quality monitoring for AI chatbots, agents, automations and CRMs
+  ${b.brand ? `Prepared by ${esc(b.brand)} &middot; monitoring by ProofMyAI` : `<a href="${esc(appUrl())}/app" style="color:${MUTED};">Dashboard</a> &middot; <a href="${esc(SITE_URL)}/status" style="color:${MUTED};">Status</a> &middot; <a href="${esc(SITE_URL)}/support" style="color:${MUTED};">Support</a> &middot; <a href="mailto:${esc(SUPPORT_EMAIL)}" style="color:${MUTED};">${esc(SUPPORT_EMAIL)}</a><br>
+  ProofMyAI &middot; Quality monitoring for AI chatbots, agents, automations and CRMs`}
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
@@ -79,7 +81,7 @@ function renderText(b: Block, footer: string): string {
   if (b.bullets?.length) out.push(...b.bullets.map((x) => `- ${x}`), "");
   if (b.cta) out.push(`${b.cta.label}: ${b.cta.url}`, "");
   if (b.after?.length) out.push(...b.after, "");
-  out.push("--", footer.replace(/<[^>]+>/g, ""), `ProofMyAI · ${SITE_URL} · Support: ${SUPPORT_EMAIL}`);
+  out.push("--", footer.replace(/<[^>]+>/g, ""), b.brand ? `Prepared by ${b.brand} · monitoring by ProofMyAI` : `ProofMyAI · ${SITE_URL} · Support: ${SUPPORT_EMAIL}`);
   return out.join("\n");
 }
 

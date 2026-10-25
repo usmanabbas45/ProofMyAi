@@ -656,6 +656,10 @@ function migrate(db: DatabaseSync): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_presend_project ON presend_checks (project_id, created_at)");
   addColumn(db, "incidents", "resolved_at", "TEXT");
   addColumn(db, "projects", "value_share_token", "TEXT");
+  // Scheduled client reports: emailed weekly or monthly to the client's own addresses (see lib/clientreport.ts).
+  addColumn(db, "projects", "client_report_emails", "TEXT");
+  addColumn(db, "projects", "client_report_freq", "TEXT");
+  addColumn(db, "projects", "client_report_last_at", "TEXT");
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_value_share ON projects(value_share_token) WHERE value_share_token IS NOT NULL");
   db.exec("CREATE INDEX IF NOT EXISTS idx_audit_items_trace ON audit_items (trace_id) WHERE trace_id IS NOT NULL");
   // Public accuracy benchmark runs (see lib/benchmark).

@@ -113,10 +113,19 @@ export function highlights(v: ValueNumbers): string[] {
   return out;
 }
 
+/** The last N days, compared with the N days before. */
+export function lastDays(days: number, now = new Date()): { period: Period; previous: Period } {
+  const from = new Date(now.getTime() - days * 86400000);
+  return { period: { from, to: now, label: `Last ${days} days` }, previous: { from: new Date(from.getTime() - days * 86400000), to: from, label: `the ${days} days before` } };
+}
+
+export function reportFor(projectId: number, p: { period: Period; previous: Period }): ValueReport {
+  const v = valueNumbers(projectId, p.period);
+  return { period: p.period, previous: p.previous, now: v, before: valueNumbers(projectId, p.previous), highlights: highlights(v) };
+}
+
 export function valueReport(projectId: number, month?: string, now = new Date()): ValueReport {
-  const { period, previous } = periodFor(month, now);
-  const v = valueNumbers(projectId, period);
-  return { period, previous, now: v, before: valueNumbers(projectId, previous), highlights: highlights(v) };
+  return reportFor(projectId, periodFor(month, now));
 }
 
 /** Read-only share link for the report (one per project; can be turned off). */
