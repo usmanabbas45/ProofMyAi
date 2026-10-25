@@ -42,7 +42,7 @@ interface N8nNode {
 interface N8nWorkflow {
   name?: string;
   nodes?: N8nNode[];
-  connections?: Record<string, { main?: ({ node?: string }[] | null)[] }>;
+  connections?: Record<string, { main?: ({ node?: string }[] | null)[]; ai_outputParser?: ({ node?: string }[] | null)[] }>;
   settings?: Record<string, unknown>;
   pinData?: Record<string, unknown>;
 }
@@ -176,6 +176,24 @@ export function scanWorkflow(wf: N8nWorkflow): ScanResult {
       nodes: names(aiNoRetry),
     });
   } else if (active.some((n) => AI_ROOT.test(n.type ?? ""))) passed.push("AI steps retry on failure");
+
+  // A model can answer "200 OK" with broken or half-empty output: nothing fails, so no retry or error workflow fires.
+  // Extractors and classifiers already return a fixed structure, so only free-text AI steps are checked.
+  const freeText = active.filter((n) => AI_ROOT.test(n.type ?? "") && !/(informationextractor|textclassifier|sentimentanalysis)$/i.test(n.type ?? ""));
+  const byName = new Map(nodes.flatMap((n) => [[n.name ?? "", n], [n.id ?? "", n]] as [string, N8nNode][]));
+  const parsed = new Set(Object.values(wf.connections ?? {}).flatMap((o) => (o?.ai_outputParser ?? []).flat().map((c) => c?.node)));
+  const checked = (n: N8nNode) =>
+    parsed.has(n.name) || (n.id ? parsed.has(n.id) : false) || n.parameters?.hasOutputParser === true ||
+    (wf.connections?.[n.name ?? ""]?.main ?? wf.connections?.[n.id ?? ""]?.main ?? []).flat().some((c) => CHECK_NODE.test(byName.get(c?.node ?? "")?.type ?? ""));
+  const unchecked = freeText.filter((n) => !checked(n));
+  if (unchecked.length) {
+    add({
+      id: "ai-output-unchecked", severity: "medium", title: "AI output is used without checking its structure",
+      why: "A model can reply \"200 OK\" with broken JSON, a missing field or an empty answer. Nothing fails, so no retry or error workflow catches it, and the bad output flows straight into your CRM, email or reply.",
+      fix: "Attach a Structured Output Parser to the AI node (Require Specific Output Format → on), or add an IF or Code node right after it that checks the fields you need and stops with Stop and Error when they're missing.",
+      nodes: names(unchecked),
+    });
+  } else if (freeText.length) passed.push("AI output is checked before it's used");
 
   const extNoRetry = active.filter((n) => EXTERNAL.test(n.type ?? "") && !n.retryOnFail);
   if (extNoRetry.length) {
