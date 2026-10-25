@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { all } from "@/lib/db";
 import { sendDueDigests } from "@/lib/digest";
+import { sendDueClientReports } from "@/lib/clientreport";
 import { purgeExpired } from "@/lib/retention";
 import { recordCronRun } from "@/lib/status";
 import { processFoundingPeriods } from "@/lib/founding";
@@ -59,6 +60,7 @@ async function runAll(started: number) {
   await checkHeartbeats();
   const suites = await runDueSuites();
   const digests = await sendDueDigests();
+  const clientReports = await sendDueClientReports();
   const welcomeEmails = await sendDueOnboarding();
   const renewalReminders = await sendRenewalReminders();
   const referralRewards = await applyPendingRewards();
@@ -73,5 +75,5 @@ async function runAll(started: number) {
   const founding = await processFoundingPeriods();
   recordDailyMetrics();
   recordCronRun(true);
-  return Response.json({ ok: true, projects: projects.length, testSuitesRun: suites, digestsSent: digests, welcomeEmails, renewalReminders, referralRewards, testsGenerated, chatSources, unansweredAlerted: noReply, uptimeChecks, sheetChecks, watchAlerts, purged, founding, ms: Date.now() - started });
+  return Response.json({ ok: true, projects: projects.length, testSuitesRun: suites, digestsSent: digests, clientReportsSent: clientReports, welcomeEmails, renewalReminders, referralRewards, testsGenerated, chatSources, unansweredAlerted: noReply, uptimeChecks, sheetChecks, watchAlerts, purged, founding, ms: Date.now() - started });
 }

@@ -31,6 +31,7 @@ import { JudgeError } from "@/lib/judge/llm";
 import { renderBody, runSuite } from "@/lib/tests/runner";
 import { pollSource } from "@/lib/workflows/pollers";
 import { revokeValueShare, valueShareToken } from "@/lib/valuereport";
+import { parseRecipients, saveClientReport, sendTestClientReport } from "@/lib/clientreport";
 import { isVerified, VERIFY_FIRST } from "@/lib/verify";
 import { acceptSuggestions, dismissSuggestions, generateTestSuggestions } from "@/lib/testgen";
 import { decideApproval } from "@/lib/approvals";
@@ -301,6 +302,30 @@ export async function shareValueReportAction(form: FormData) {
   }
   valueShareToken(p.id, true);
   done(path, { ok: "Client link created. Anyone with the link can view this report (read-only)." });
+}
+
+/** Saves the scheduled client report (recipients and weekly/monthly), or sends a test to the current user. */
+export async function clientReportAction(form: FormData) {
+  const p = await project(form);
+  const path = `/app/p/${p.id}/value`;
+  const freqRaw = str(form, "freq", 10);
+  const freq = freqRaw === "weekly" || freqRaw === "monthly" ? freqRaw : null;
+  const raw = str(form, "emails", 1200);
+  if (form.get("test")) {
+    const user = await requireUser();
+    if (!rateLimit(`client-report-test:${p.id}`, 5, 3600_000)) done(path, { error: "Too many test reports. Try again in an hour." });
+    const ok = await sendTestClientReport(p.id, user.email, freq ?? "monthly").catch(() => false);
+    done(path, ok ? { ok: `Test report sent to ${user.email}. Check your inbox.` } : { error: "The test email couldn't be sent. Check that email sending (Resend) is set up." });
+  }
+  const r = parseRecipients(raw);
+  if (!freq) {
+    // Keep the addresses so turning reports back on is one click.
+    saveClientReport(p.id, r.ok ? r.emails : [], null);
+    done(path, { ok: "Automatic client reports are off." });
+  }
+  if (!r.ok) done(path, { error: r.error });
+  saveClientReport(p.id, r.emails, freq);
+  done(path, { ok: freq === "weekly" ? "Done. The client gets this report every Monday morning, covering the last 7 days." : "Done. The client gets this report on the 1st of every month, covering the month before." });
 }
 
 // ---------- Chatbot tests ----------
