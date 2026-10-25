@@ -15,6 +15,7 @@ const CHECKS = [
   ["🔴 Open webhooks", "Webhook nodes anyone can call: fake leads, fake orders and a surprise AI bill."],
   ["🔴 Errors passed as success", "\"On Error: Continue\" nodes that let a failed step end the run green."],
   ["🟠 No retries", "AI and API steps that fail the whole run on one 429 or 502."],
+  ["🟠 Unchecked AI output", "AI steps whose answer goes straight on with no Structured Output Parser or check, so a \"200 OK\" with broken JSON slips through."],
   ["🟠 Silent empty results", "Data steps with no check for 0 items, the classic \"success, but nothing happened\"."],
   ["🟠 No error workflow", "Failures that only reach the execution log, never you."],
   ["🟠 Pinned test data", "Customer data that travels with every export and share."],

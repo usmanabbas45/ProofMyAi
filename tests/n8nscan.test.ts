@@ -7,7 +7,7 @@ const ids = (wf: object) => scan(wf).findings.map((f) => f.id);
 describe("n8n workflow risk scanner", () => {
   it("finds every risk in the example workflow and never shows a full secret", () => {
     const r = scan(JSON.parse(EXAMPLE_WORKFLOW));
-    expect(r.findings.map((f) => f.id)).toEqual(expect.arrayContaining(["secrets", "open-webhook", "swallowed-errors", "ai-retry", "api-retry", "empty-results", "wf-error-workflow", "timezone", "no-heartbeat"]));
+    expect(r.findings.map((f) => f.id)).toEqual(expect.arrayContaining(["secrets", "open-webhook", "swallowed-errors", "ai-retry", "ai-output-unchecked", "api-retry", "empty-results", "wf-error-workflow", "timezone", "no-heartbeat"]));
     expect(r.grade).toBe("At risk");
     const text = JSON.stringify(r);
     expect(text).not.toContain("9f3kQ7xLm2Vb8nR4tY6wZ1pS5dH0jC3e");
@@ -22,8 +22,9 @@ describe("n8n workflow risk scanner", () => {
         { name: "Get", type: "n8n-nodes-base.httpRequest", retryOnFail: true, parameters: { url: "https://x", authentication: "genericCredentialType" } },
         { name: "Empty?", type: "n8n-nodes-base.if", parameters: {} },
         { name: "AI", type: "@n8n/n8n-nodes-langchain.agent", retryOnFail: true, parameters: { text: "={{ $json.q }}" } },
+        { name: "Valid?", type: "n8n-nodes-base.code", parameters: {} },
       ],
-      connections: { Hook: { main: [[{ node: "Get" }]] }, Get: { main: [[{ node: "Empty?" }]] }, "Empty?": { main: [[{ node: "AI" }]] } },
+      connections: { Hook: { main: [[{ node: "Get" }]] }, Get: { main: [[{ node: "Empty?" }]] }, "Empty?": { main: [[{ node: "AI" }]] }, AI: { main: [[{ node: "Valid?" }]] } },
     });
     expect(r.findings).toEqual([]);
     expect(r.score).toBe(100);
@@ -69,5 +70,29 @@ describe("n8n workflow risk scanner", () => {
     expect(parseWorkflows("hello")).toMatchObject({ ok: false });
     expect(parseWorkflows('{"foo":1}')).toMatchObject({ ok: false });
     expect(maskSecret("abcdefghijkl")).toBe("abcdef••••kl");
+  });
+
+  it("flags AI output that is used without a structure check, unless a parser or check follows", () => {
+    const ai = { name: "Write reply", type: "@n8n/n8n-nodes-langchain.chainLlm", retryOnFail: true, parameters: {} };
+    const crm = { name: "CRM", type: "n8n-nodes-base.hubspot", retryOnFail: true };
+    const t = { name: "T", type: "n8n-nodes-base.manualTrigger" };
+    const flagged = scan({ nodes: [t, ai, crm], connections: { T: { main: [[{ node: "Write reply" }]] }, "Write reply": { main: [[{ node: "CRM" }]] } } });
+    expect(flagged.findings.find((f) => f.id === "ai-output-unchecked")).toMatchObject({ nodes: ["Write reply"], severity: "medium" });
+
+    const withParser = scan({
+      nodes: [t, ai, crm, { name: "Parser", type: "@n8n/n8n-nodes-langchain.outputParserStructured" }],
+      connections: { T: { main: [[{ node: "Write reply" }]] }, "Write reply": { main: [[{ node: "CRM" }]] }, Parser: { ai_outputParser: [[{ node: "Write reply" }]] } },
+    });
+    expect(withParser.findings.map((f) => f.id)).not.toContain("ai-output-unchecked");
+    expect(withParser.passed).toContain("AI output is checked before it's used");
+
+    const withIf = scan({
+      nodes: [t, ai, { name: "Has fields?", type: "n8n-nodes-base.if" }, crm],
+      connections: { T: { main: [[{ node: "Write reply" }]] }, "Write reply": { main: [[{ node: "Has fields?" }]] }, "Has fields?": { main: [[{ node: "CRM" }]] } },
+    });
+    expect(withIf.findings.map((f) => f.id)).not.toContain("ai-output-unchecked");
+
+    const extractor = scan({ nodes: [t, { name: "Extract", type: "@n8n/n8n-nodes-langchain.informationExtractor", retryOnFail: true }], connections: { T: { main: [[{ node: "Extract" }]] } } });
+    expect(extractor.findings.map((f) => f.id)).not.toContain("ai-output-unchecked");
   });
 });

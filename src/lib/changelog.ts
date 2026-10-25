@@ -26,6 +26,7 @@ export const RELEASES: Release[] = [
   {
     date: "2026-10-23", title: "Free n8n Workflow Checker", tag: "New",
     items: [
+      "🧩 New check (suggested by a reader): AI steps whose output is used without a Structured Output Parser or a check node, the \"200 OK but broken JSON\" gap that no retry catches.",
       "🔍 Paste any n8n workflow at /tools/n8n-workflow-checker and get a risk score in seconds: API keys pasted in nodes, webhooks anyone can call, errors that pass as success, missing retries, no error workflow, unchecked empty results and pinned test data, each with the exact fix.",
       "🔒 It runs entirely in your browser. The workflow is never uploaded or stored, and there's no sign-up.",
       "🛡️ Saved keys and 2FA now survive a full secret-key rotation, after our hosting provider's security incident on 21 October.",
