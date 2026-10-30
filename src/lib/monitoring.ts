@@ -4,6 +4,7 @@ import { sendMail } from "./email";
 import { systemEmail } from "./emails";
 import { SITE_URL } from "./seo";
 import { CRON_INTERVAL_MIN } from "./status";
+import { isStaleDeployError } from "./stale-deploy";
 
 /**
  * Tells the site owner (ADMIN_EMAILS) when something breaks: a burst of server errors, or the scheduled
@@ -46,6 +47,11 @@ function isControlFlow(err: unknown): boolean {
 /** Records a server error and emails the admins when errors spike. */
 export async function reportError(source: string, err: unknown, now = new Date()): Promise<void> {
   if (isControlFlow(err)) return;
+  // A page left open across a deploy: the browser reloads itself, so it isn't a server error worth an alert.
+  if (isStaleDeployError(err)) {
+    console.warn(`[stale page] ${source}: form from an older version; the visitor's page reloads`);
+    return;
+  }
   try {
     const message = (err instanceof Error ? `${err.name}: ${err.message}` : String(err)).replace(/\s+/g, " ").slice(0, 500);
     console.error(`[error] ${source}: ${message}`);

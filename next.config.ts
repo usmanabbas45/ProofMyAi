@@ -45,6 +45,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Each deploy gets its own id, so a page left open from an older version does a full reload when it navigates
+  // instead of calling server actions that no longer exist (Railway sets the commit SHA at build time).
+  ...(process.env.RAILWAY_GIT_COMMIT_SHA ? { deploymentId: process.env.RAILWAY_GIT_COMMIT_SHA.slice(0, 12) } : {}),
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async redirects() {
     // People type proofmyai.com/pricing; the plans live on the homepage.
