@@ -7,6 +7,7 @@ import { limitError, projectOwner } from "@/lib/billing";
 import { DIAGNOSIS_TEXT } from "@/lib/judge/evidence";
 import { VERDICT_LABELS } from "@/lib/judge/types";
 import { topicFor } from "@/lib/topics";
+import { statedAsFact } from "@/lib/judge/certainty";
 import { areaAutonomy, decisionFor } from "@/lib/trust";
 
 const CheckSchema = z.object({
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
   return json({
     decision,
     verdict: g.verdict, label: VERDICT_LABELS[g.verdict], severity: g.severity, reason: g.reason,
-    source: g.sourceDoc, evidence: g.evidence ?? null, ...(g.diagnosis ? { diagnosis: g.diagnosis, diagnosis_detail: DIAGNOSIS_TEXT[g.diagnosis].text } : {}), area, area_autonomy: autonomy,
+    stated_as_fact: statedAsFact(answer, g.verdict) !== null, source: g.sourceDoc, evidence: g.evidence ?? null, ...(g.diagnosis ? { diagnosis: g.diagnosis, diagnosis_detail: DIAGNOSIS_TEXT[g.diagnosis].text } : {}), area, area_autonomy: autonomy,
     advice: decision === "allow" ? "Safe to send." : decision === "review" ? "Hold this reply for a person to approve, or send a safe fallback." : "Do not send. Hand the customer to a person.",
   }, 200);
 }

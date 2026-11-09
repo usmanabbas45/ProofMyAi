@@ -9,7 +9,7 @@ const STRONG_ESCALATION =
 const SOFT_ESCALATION = /\b(refund|cancel\w*|complain\w*|complaint|angry|broken|damaged|urgent|manager|human)\b/i;
 export const ESCALATION_ACTIONS =
   /\b(connect(ing)? you|transfer|escalat|human|team member|support team|agent will|someone will|contact (our|the) (team|support)|open(ed)? a ticket|reach out)/i;
-const HEDGES = /\b(i think|probably|maybe|might|not sure|i believe|possibly|perhaps|as far as i know)\b/i;
+export const HEDGES = /\b(i think|probably|maybe|might|not sure|i believe|possibly|perhaps|as far as i know)\b/i;
 const OVERPROMISE = /\b(guarantee[ds]?|100%|always|never fail|definitely|promise|free of charge|no questions asked|lifetime)\b/i;
 const REFUSAL = /\b(i (can't|cannot|am unable to|don't have)|unable to help|not able to)\b/i;
 

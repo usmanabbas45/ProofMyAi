@@ -60,7 +60,7 @@ export default async function SharedReport({ params }: { params: Promise<{ token
           <div className="card">
             <h3>⚠️ Risk avoided by catching these</h3>
             <p style={{ margin: 0 }}>
-              <strong>{risk.high}</strong> answer{risk.high === 1 ? "" : "s"} could have created legal or financial exposure, and <strong>{risk.medium}</strong> misled or frustrated customers.
+              <strong>{risk.high}</strong> answer{risk.high === 1 ? "" : "s"} could have created legal or financial exposure, and <strong>{risk.medium}</strong> misled or frustrated customers.{risk.statedAsFact ? <> <strong>{risk.statedAsFact}</strong> wrong answer{risk.statedAsFact === 1 ? " was" : "s were"} stated as fact, with nothing to make a customer double-check.</> : null}
               {flagTotal ? ` ${flagTotal} conversation problem${flagTotal === 1 ? "" : "s"} (asking again, restarting, fallbacks or contradictions) were also found.` : ""}
             </p>
           </div>

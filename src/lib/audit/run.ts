@@ -8,6 +8,7 @@ import { exchangesOf, VERDICT_LABELS, type Conversation, type Exchange, type Gra
 import type { MlpModel } from "../ml/mlp";
 import { loadModel, riskScore } from "../ml/risk";
 import { applyRules, parseMustInclude, projectRules, type Rule } from "../rules";
+import { certaintySeverity, statedAsFact } from "../judge/certainty";
 import { conversationFindings, FLAG_SEVERITY, INFO_FLAGS, isSafetyFlag, type ConvFlag } from "../judge/conversation";
 import { isFrustrated } from "../sentiment";
 import { topicFor } from "../topics";
@@ -96,10 +97,18 @@ export function withConversationChecks(e: Exchange, grade: Grade): { grade: Grad
   };
 }
 
+/** Flags a wrong answer the bot stated as plain fact, and raises its risk (see judge/certainty). */
+export function withCertaintyCheck(e: Exchange, grade: Grade, flags: ConvFlag[]): { grade: Grade; flags: ConvFlag[] } {
+  const f = statedAsFact(e.answer, grade.verdict);
+  if (!f) return { grade, flags };
+  return { grade: { ...grade, severity: certaintySeverity(grade.severity, f), reason: `${grade.reason} ${f.reason}` }, flags: [...flags, "confident_wrong"] };
+}
+
 export function storeGradedItem(auditId: number, e: Exchange, g: Grade, index: KbIndex, model: MlpModel | null, rules: Rule[], note = "", meta: ReplyMeta = {}): Grade {
   const ruled = applyRules(e, g, rules);
   const hit = ruled.hit;
-  const { grade, flags } = ruled.hit ? { grade: ruled.grade, flags: conversationFindings(e).map((f) => f.flag) } : withConversationChecks(e, ruled.grade);
+  const checked = ruled.hit ? { grade: ruled.grade, flags: conversationFindings(e).map((f) => f.flag) } : withConversationChecks(e, ruled.grade);
+  const { grade, flags } = withCertaintyCheck(e, checked.grade, checked.flags);
   const features = featureVector(signalsFor(e, index), grade.verdict, grade.confidence);
   // "Don't store transcripts" mode: keep the verdict, reason and scores, but not the chat text itself.
   const frustrated = isFrustrated(e.question) ? 1 : 0;
@@ -182,6 +191,7 @@ const BEHAVIOUR_FIX: Record<ConvFlag, string> = {
   restart: "Bot session handling: restarts mid-conversation",
   fallback: "Bot coverage: generic fallback replies instead of answers",
   contradiction: "Bot consistency: contradicts its earlier replies",
+  confident_wrong: "Bot tone: wrong answers stated as fact",
   injection: "Bot security: add prompt-injection protection to the system prompt",
   attack_blocked: "Bot security: attacks the bot refused (no action needed)",
   prompt_leak: "Bot security: stop the bot revealing its system prompt",
@@ -192,7 +202,7 @@ const BEHAVIOUR_FIX: Record<ConvFlag, string> = {
 };
 
 /** Headline risk numbers for reports ("3 answers could have created legal or financial exposure"). */
-export function riskSummary(auditId: number): { high: number; medium: number; flags: Record<ConvFlag, number> } {
+export function riskSummary(auditId: number): { high: number; medium: number; flags: Record<ConvFlag, number>; statedAsFact: number } {
   const bySev = all<{ severity: Severity; n: number }>(
     "SELECT severity, COUNT(*) AS n FROM audit_items WHERE audit_id = ? AND COALESCE(corrected_verdict, verdict) <> 'correct' GROUP BY severity", auditId,
   );
@@ -200,7 +210,11 @@ export function riskSummary(auditId: number): { high: number; medium: number; fl
   for (const r of all<{ conv_flags: string }>("SELECT conv_flags FROM audit_items WHERE audit_id = ? AND conv_flags IS NOT NULL", auditId)) {
     for (const f of r.conv_flags.split(",") as ConvFlag[]) if (f in flags) flags[f]++;
   }
-  return { high: bySev.find((s) => s.severity === "high")?.n ?? 0, medium: bySev.find((s) => s.severity === "medium")?.n ?? 0, flags };
+  // "Stated as fact" describes how a wrong answer was said, so it is counted on its own, not as a conversation problem.
+  const statedAsFact = get<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM audit_items WHERE audit_id = ? AND (',' || conv_flags || ',') LIKE '%,confident_wrong,%' AND COALESCE(corrected_verdict, verdict) <> 'correct'", auditId,
+  )?.n ?? 0;
+  return { high: bySev.find((s) => s.severity === "high")?.n ?? 0, medium: bySev.find((s) => s.severity === "medium")?.n ?? 0, flags, statedAsFact };
 }
 
 export function fixList(auditId: number): FixGroup[] {

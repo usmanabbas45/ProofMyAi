@@ -1,6 +1,7 @@
 import { buildKbIndex } from "./judge/features";
 import { heuristicGrade } from "./judge/heuristic";
 import { llmAvailable, llmGradeConversation } from "./judge/llm";
+import { certaintySeverity, statedAsFact } from "./judge/certainty";
 import { conversationFindings, FLAG_LABELS, INFO_FLAGS } from "./judge/conversation";
 import { VERDICT_LABELS, type Exchange, type Grade, type KbDoc, type Severity, type Verdict } from "./judge/types";
 import { rateLimit } from "./security";
@@ -38,6 +39,11 @@ export async function freeCheck(question: string, answer: string, policy: string
   }
   grade ??= heuristicGrade(ex, buildKbIndex(docs));
   const flags = conversationFindings(ex).filter((f) => !INFO_FLAGS.includes(f.flag)).map((f) => `${FLAG_LABELS[f.flag]}: ${f.reason}`);
+  const fact = statedAsFact(ex.answer, grade.verdict);
+  if (fact) {
+    grade = { ...grade, severity: certaintySeverity(grade.severity, fact) };
+    flags.push(`${FLAG_LABELS.confident_wrong}: ${fact.reason.replace(/your docs don't/, "your policy doesn't")}`);
+  }
   // The rule-based reasons talk about a "knowledge base"; here the visitor pasted a policy.
   const reason = grade.reason.replace(/your knowledge base|the knowledge base/gi, "your policy").replace(/knowledge base/gi, "policy");
   return { verdict: grade.verdict, label: VERDICT_LABELS[grade.verdict], severity: grade.severity, reason, mode, flags };
