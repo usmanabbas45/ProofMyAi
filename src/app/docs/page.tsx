@@ -121,11 +121,13 @@ X-API-Key: ap_live_xxxxxxxxxxxxxxxx`}</Code>
        "answer": "Yes, every item gets a full refund within 30 days."}'`}</Code>
       <Code>{`{"decision": "block", "verdict": "hallucination", "label": "Made up", "severity": "high",
  "reason": "The returns article says sale items get store credit only.",
+ "stated_as_fact": true,
  "source": "Returns & refunds",
  "evidence": "Sale items can be returned for store credit only, not a refund.",
  "area": "Returns & refunds", "area_autonomy": "human_review",
  "advice": "Do not send. Hand the customer to a person."}`}</Code>
       <p><code>evidence</code> is the exact sentence from your help docs behind the verdict. A quote from the AI judge is only kept if it appears in your docs word for word, so the evidence is never made up. It&apos;s also shown on every checked answer in your dashboard and in the CSV export.</p>
+      <p><code>stated_as_fact</code> is <code>true</code> when a wrong answer was said with full confidence (&quot;Yes, all items…&quot;, a specific price or deadline, no hedge). Customers act on those without double-checking, so they are rated a level more serious. Such answers are marked &quot;Stated as fact&quot; in your dashboard.</p>
       <Fields rows={[
         ["allow", "decision", "Safe to send or act on."],
         ["review", "decision", "Hold it for a person to approve, or send a safe fallback such as \"Let me check that for you\". Every answer in an area your Trust report marks 🔴 returns review."],

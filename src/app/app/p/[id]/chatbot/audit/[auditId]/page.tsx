@@ -31,6 +31,7 @@ interface Item {
 const flagLike = (f: string) => `(',' || conv_flags || ',') LIKE '%,${f},%'`;
 const SAFETY_ANY = SAFETY_FLAGS.map(flagLike).join(" OR ");
 const CONV_ONLY = ["re_ask", "restart", "fallback", "contradiction"].map(flagLike).join(" OR ");
+const STATED_AS_FACT = `${flagLike("confident_wrong")} AND COALESCE(corrected_verdict, verdict) <> 'correct'`;
 
 export default async function AuditPage({ params, searchParams }: {
   params: Promise<{ id: string; auditId: string }>;
@@ -45,7 +46,7 @@ export default async function AuditPage({ params, searchParams }: {
   );
   if (!audit) notFound();
   const sp = await searchParams;
-  const filter = sp.v && (sp.v === "problems" || sp.v === "frustrated" || sp.v === "conversation" || sp.v === "safety" || (VERDICTS as readonly string[]).includes(sp.v)) ? sp.v : "problems";
+  const filter = sp.v && (sp.v === "problems" || sp.v === "frustrated" || sp.v === "conversation" || sp.v === "safety" || sp.v === "fact" || (VERDICTS as readonly string[]).includes(sp.v)) ? sp.v : "problems";
   const sort = sp.sort === "order" ? "order" : "risk";
   const page = Math.max(1, Number(sp.page) || 1);
   const base = `/app/p/${p.id}/chatbot/audit/${audit.id}`;
@@ -61,8 +62,9 @@ export default async function AuditPage({ params, searchParams }: {
   const where = filter === "problems" ? "AND COALESCE(corrected_verdict, verdict) <> 'correct'"
     : filter === "frustrated" ? "AND frustrated = 1"
     : filter === "conversation" ? `AND conv_flags IS NOT NULL AND (${CONV_ONLY})`
-    : filter === "safety" ? `AND (${SAFETY_ANY})` : "AND COALESCE(corrected_verdict, verdict) = ?";
-  const args: (string | number)[] = filter === "problems" || filter === "frustrated" || filter === "conversation" || filter === "safety" ? [audit.id] : [audit.id, filter];
+    : filter === "safety" ? `AND (${SAFETY_ANY})`
+    : filter === "fact" ? `AND ${STATED_AS_FACT}` : "AND COALESCE(corrected_verdict, verdict) = ?";
+  const args: (string | number)[] = filter === "problems" || filter === "frustrated" || filter === "conversation" || filter === "safety" || filter === "fact" ? [audit.id] : [audit.id, filter];
   const risk = riskSummary(audit.id);
   const flagEntries = Object.entries(risk.flags) as [ConvFlag, number][];
   const flagTotal = flagEntries.filter(([f]) => !isSafetyFlag(f)).reduce((a, [, n]) => a + n, 0);
@@ -134,7 +136,7 @@ export default async function AuditPage({ params, searchParams }: {
             <div className="card">
               <h3>⚠️ Business risk found</h3>
               <div className="grid grid-4">
-                <div className="stat"><span className="stat-label">Could create legal or financial exposure</span><span className="stat-value" style={{ color: risk.high ? "var(--bad)" : undefined }}>{risk.high}</span><span className="stat-foot">high-risk answers</span></div>
+                <div className="stat"><span className="stat-label">Could create legal or financial exposure</span><span className="stat-value" style={{ color: risk.high ? "var(--bad)" : undefined }}>{risk.high}</span><span className="stat-foot">high-risk answers{risk.statedAsFact ? ` · ${risk.statedAsFact} wrong answer${risk.statedAsFact === 1 ? "" : "s"} stated as fact` : ""}</span></div>
                 <div className="stat"><span className="stat-label">Misled or frustrated customers</span><span className="stat-value">{risk.medium}</span><span className="stat-foot">medium-risk answers</span></div>
                 <div className="stat"><span className="stat-label">Conversation problems</span><span className="stat-value">{flagTotal}</span>
                   <span className="stat-foot">{flagEntries.filter(([f, n]) => n && !isSafetyFlag(f)).map(([f, n]) => `${FLAG_LABELS[f]} × ${n}`).join(" · ") || "none"}</span></div>
@@ -198,6 +200,7 @@ export default async function AuditPage({ params, searchParams }: {
             <Link className={`tab ${filter === "frustrated" ? "active" : ""}`} href={qs({ v: "frustrated" })}>😠 Frustrated customers ({frustrated})</Link>
             <Link className={`tab ${filter === "conversation" ? "active" : ""}`} href={qs({ v: "conversation" })}>🔁 Conversation problems ({flagTotal})</Link>
             <Link className={`tab ${filter === "safety" ? "active" : ""}`} href={qs({ v: "safety" })}>🛡️ Safety ({safetyTotal})</Link>
+            {risk.statedAsFact ? <Link className={`tab ${filter === "fact" ? "active" : ""}`} href={qs({ v: "fact" })} title="Wrong answers the bot said with full confidence, the ones customers don't double-check">📢 Stated as fact ({risk.statedAsFact})</Link> : null}
             {VERDICTS.map((v) => (
               <Link key={v} className={`tab ${filter === v ? "active" : ""}`} href={qs({ v })}>{VERDICT_LABELS[v]} ({counts.find((c) => c.verdict === v)?.n ?? 0})</Link>
             ))}
@@ -215,7 +218,7 @@ export default async function AuditPage({ params, searchParams }: {
                         {it.risk != null ? <Badge tone={it.risk >= 0.7 ? "bad" : it.risk >= 0.4 ? "warn" : "ok"}>Risk {Math.round(it.risk * 100)}%</Badge> : null}
                         {it.frustrated ? <Badge tone="warn">😠 Frustrated customer</Badge> : null}
                         {it.rule_hit ? <Badge tone="bad">📏 Rule broken</Badge> : null}
-                        {(it.conv_flags?.split(",") as ConvFlag[] | undefined)?.map((f) => <Badge key={f} tone={f === "attack_blocked" ? "ok" : FLAG_SEVERITY[f] === "high" ? "bad" : "warn"}>{isSafetyFlag(f) ? "🛡️" : "🔁"} {FLAG_LABELS[f] ?? f}</Badge>)}
+                        {(it.conv_flags?.split(",") as ConvFlag[] | undefined)?.filter((f) => f !== "confident_wrong" || shown !== "correct").map((f) => <Badge key={f} tone={f === "attack_blocked" ? "ok" : FLAG_SEVERITY[f] === "high" ? "bad" : "warn"}>{f === "confident_wrong" ? "📢" : isSafetyFlag(f) ? "🛡️" : "🔁"} {FLAG_LABELS[f] ?? f}</Badge>)}
                         {it.latency_ms != null ? <Badge tone={it.latency_ms > 10000 ? "warn" : "muted"}>⏱ {(it.latency_ms / 1000).toFixed(1)}s</Badge> : null}
                         {it.bot_error ? <Badge tone="bad">⚠ Bot error</Badge> : null}
                         {it.feedback ? <Badge tone="brand">{it.feedback === "agree" ? "Reviewed ✓" : `Corrected (judge said ${VERDICT_LABELS[it.verdict]})`}</Badge> : null}

@@ -8,18 +8,22 @@ import type { Exchange, Severity } from "./types";
  * generic fallback replies and replies that contradict an earlier bot message.
  * Deterministic, so they also work with AI checking switched off.
  */
-export type ConvFlag = "re_ask" | "restart" | "fallback" | "contradiction" | SafetyFlag;
+export type ConvFlag = "re_ask" | "restart" | "fallback" | "contradiction" | "confident_wrong" | SafetyFlag;
 
 /** Safety and security flags (shown with a shield, grouped in their own filter). */
 export const SAFETY_FLAGS: ConvFlag[] = ["injection", "attack_blocked", "prompt_leak", "data_leak", "toxic", "wrong_language", "no_ai_disclosure"];
-/** Flags that are recorded for the owner but are not a mistake by the bot. */
-export const INFO_FLAGS: ConvFlag[] = ["attack_blocked"];
+/**
+ * Flags that don't decide the fix on their own: an attack the bot refused (not a mistake), and
+ * "stated as fact", which describes how a wrong answer was said (its article still needs fixing).
+ */
+export const INFO_FLAGS: ConvFlag[] = ["attack_blocked", "confident_wrong"];
 
 export const FLAG_LABELS: Record<ConvFlag, string> = {
   re_ask: "Asked again",
   restart: "Restarted",
   fallback: "Fallback reply",
   contradiction: "Contradiction",
+  confident_wrong: "Stated as fact",
   injection: "Prompt injection",
   attack_blocked: "Attack blocked",
   prompt_leak: "Prompt leaked",
@@ -30,7 +34,7 @@ export const FLAG_LABELS: Record<ConvFlag, string> = {
 };
 
 export const FLAG_SEVERITY: Record<ConvFlag, Severity> = {
-  re_ask: "medium", restart: "medium", fallback: "low", contradiction: "high",
+  re_ask: "medium", restart: "medium", fallback: "low", contradiction: "high", confident_wrong: "high",
   injection: "high", attack_blocked: "none", prompt_leak: "high", data_leak: "high", toxic: "high", wrong_language: "medium", no_ai_disclosure: "high",
 };
 
