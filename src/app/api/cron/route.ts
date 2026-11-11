@@ -9,6 +9,7 @@ import { recordDailyMetrics } from "@/lib/analytics";
 import { alertMissingReplies } from "@/lib/audit/live";
 import { pollAllChatSources } from "@/lib/connectors";
 import { runDueSuites } from "@/lib/tests/runner";
+import { periodicAgentChecks } from "@/lib/agents/health";
 import { periodicWorkflowChecks } from "@/lib/workflows/monitor";
 import { pollAllSources } from "@/lib/workflows/pollers";
 import { runDueMonitors } from "@/lib/uptime";
@@ -23,6 +24,7 @@ import { sendRenewalReminders } from "@/lib/renewals";
 import { applyPendingRewards } from "@/lib/referrals";
 import { autoGenerateTests } from "@/lib/testgen";
 import { evaluateAllWatches } from "@/lib/watches";
+import { runDueSelfTests } from "@/lib/selftest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -54,6 +56,7 @@ async function runAll(started: number) {
   const projects = all<{ id: number }>("SELECT id FROM projects WHERE is_demo = 0"); // demo data is never "live"
   for (const p of projects) {
     await periodicWorkflowChecks(p.id);
+    await periodicAgentChecks(p.id);
     await qualityChecks(p.id);
   }
   expireApprovals();
@@ -70,10 +73,11 @@ async function runAll(started: number) {
   const uptimeChecks = await runDueMonitors();
   const sheetChecks = await runDueSheets();
   const watchAlerts = await evaluateAllWatches();
+  const selfTests = await runDueSelfTests();
   const purged = purgeExpired();
   purgeOldErrors();
   const founding = await processFoundingPeriods();
   recordDailyMetrics();
   recordCronRun(true);
-  return Response.json({ ok: true, projects: projects.length, testSuitesRun: suites, digestsSent: digests, clientReportsSent: clientReports, welcomeEmails, renewalReminders, referralRewards, testsGenerated, chatSources, unansweredAlerted: noReply, uptimeChecks, sheetChecks, watchAlerts, purged, founding, ms: Date.now() - started });
+  return Response.json({ ok: true, projects: projects.length, testSuitesRun: suites, digestsSent: digests, clientReportsSent: clientReports, welcomeEmails, renewalReminders, referralRewards, testsGenerated, chatSources, unansweredAlerted: noReply, uptimeChecks, sheetChecks, watchAlerts, selfTests, purged, founding, ms: Date.now() - started });
 }

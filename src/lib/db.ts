@@ -662,6 +662,40 @@ function migrate(db: DatabaseSync): void {
   addColumn(db, "projects", "client_report_last_at", "TEXT");
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_value_share ON projects(value_share_token) WHERE value_share_token IS NOT NULL");
   db.exec("CREATE INDEX IF NOT EXISTS idx_audit_items_trace ON audit_items (trace_id) WHERE trace_id IS NOT NULL");
+  // Agent runs that reported "running" and haven't finished yet (see lib/agents/health.ts).
+  db.exec(`CREATE TABLE IF NOT EXISTS agent_run_starts (
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    external_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, external_id)
+  )`);
+  // "Proof your checks work": results of each self-test (see lib/selftest.ts).
+  db.exec(`CREATE TABLE IF NOT EXISTS self_tests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    trigger TEXT NOT NULL,
+    ok INTEGER NOT NULL,
+    results_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_self_tests ON self_tests (project_id, created_at)");
+  // Voice bots: one row per phone call (see lib/voice.ts).
+  db.exec(`CREATE TABLE IF NOT EXISTS voice_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    external_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    bot_name TEXT,
+    turns INTEGER NOT NULL,
+    duration_s REAL,
+    ended_reason TEXT,
+    human_requested INTEGER NOT NULL DEFAULT 0,
+    transferred INTEGER NOT NULL DEFAULT 0,
+    issues_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (project_id, external_id)
+  )`);
   // Public accuracy benchmark runs (see lib/benchmark).
   db.exec(`CREATE TABLE IF NOT EXISTS benchmark_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

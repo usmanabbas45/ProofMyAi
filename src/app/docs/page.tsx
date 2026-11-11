@@ -24,6 +24,7 @@ const TOC = [
   ["feedback", "👍 POST /feedback (customer ratings)"],
   ["agent-runs", "🤖 POST /agent-runs (AI agents)"],
   ["otel", "📡 OpenTelemetry traces"],
+  ["calls", "📞 POST /calls (voice bots)"],
   ["workflow-runs", "⚙️ POST /workflow-runs (n8n, Make, Zapier)"],
   ["errors", "⚠️ Errors & limits"],
   ["privacy", "🔒 Privacy & data"],
@@ -236,7 +237,7 @@ curl -fsS "https://proofmyai.com/api/hb/hb_your_token/fail?msg=disk%20full"   # 
         ["run_id", "string, required", "Unique ID of this run. Sending the same run_id twice returns 409."],
         ["agent_name", "string, required", "Which agent ran, e.g. \"refund-agent\"."],
         ["goal", "string", "What the agent was asked to do."],
-        ["status", "string", "success (default), error, timeout or cancelled."],
+        ["status", "string", "success (default), error, timeout or cancelled. Send running when the run starts (just run_id and agent_name) to be alerted if it never finishes."],
         ["final_output", "string", "The agent's final answer or result."],
         ["steps", "array", "Each step: { type: llm | tool | retrieval | other, name, input, output, error, duration_ms, tokens, cost_usd }."],
       ]} />
@@ -258,7 +259,9 @@ curl -fsS "https://proofmyai.com/api/hb/hb_your_token/fail?msg=disk%20full"   # 
       <Code>{`{"id": 812, "score": 55, "issues": [
   {"code": "TOOL_ERRORS", "severity": "high", "message": "..."},
   {"code": "ENDED_ON_ERROR", "severity": "medium", "message": "The last step failed but the run still reported success."}]}`}</Code>
-      <p>Issue codes: <code>RUN_FAILED</code>, <code>TOOL_ERRORS</code>, <code>LOOP_DETECTED</code>, <code>TOO_MANY_STEPS</code>, <code>OVER_BUDGET</code>, <code>SLOW_RUN</code>, <code>EMPTY_OUTPUT</code>, <code>ENDED_ON_ERROR</code>, plus from the AI review <code>GOAL_NOT_MET</code> and <code>UNGROUNDED_OUTPUT</code>. Set your step, cost and time limits in project Settings.</p>
+      <p>Issue codes: <code>RUN_FAILED</code>, <code>TOOL_ERRORS</code>, <code>LOOP_DETECTED</code>, <code>TOO_MANY_STEPS</code>, <code>OVER_BUDGET</code>, <code>SLOW_RUN</code>, <code>EMPTY_OUTPUT</code>, <code>ENDED_ON_ERROR</code>, <code>DESTRUCTIVE_ACTION</code>, plus from the AI review <code>GOAL_NOT_MET</code> and <code>UNGROUNDED_OUTPUT</code>. Set your step, cost and time limits in project Settings.</p>
+      <p><b>Destructive actions.</b> Tool calls that delete, drop, wipe or overwrite data (a tool named <code>delete_record</code> or <code>volumeDelete</code>, <code>DROP TABLE</code>, <code>DELETE FROM</code> without <code>WHERE</code>, <code>rm -rf</code>, <code>git push --force</code>, an HTTP <code>DELETE</code>) are flagged <code>DESTRUCTIVE_ACTION</code>: high, with an alert, when they touch production, backups or everything at once. Send these actions to <a href="#approvals">/approvals</a> with <code>reversible: false</code> first. If a person approved one with the same <code>trace_id</code>, it is recorded but not alerted.</p>
+      <p><b>Agents that go quiet.</b> ProofMyAI learns each agent&apos;s normal rhythm and alerts (<code>AGENT_STOPPED</code>) when it stops running, with no settings. To catch runs that start but never finish (hung, crashed, killed), send <code>{`{"run_id": "...", "agent_name": "...", "status": "running"}`}</code> when a run starts (answers <code>202</code>), then the finished run with the same <code>run_id</code>. Starts with no result are alerted as <code>AGENT_RUN_UNFINISHED</code>.</p>
 
       <h2 id="otel">📡 OpenTelemetry traces (no code changes)</h2>
       <p>Already instrumented with OpenTelemetry, or using a framework that is (LangChain/LangGraph, CrewAI, OpenAI Agents SDK, LlamaIndex, Vercel AI SDK, or OpenLLMetry/OpenInference instrumentation)? Point the exporter at ProofMyAI with three environment variables. Each finished trace becomes an agent run with the same checks: failed steps, loops, runaway cost and latency, empty output, and step-by-step timing.</p>
@@ -266,6 +269,30 @@ curl -fsS "https://proofmyai.com/api/hb/hb_your_token/fail?msg=disk%20full"   # 
 OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer ap_live_your_key
 OTEL_EXPORTER_OTLP_PROTOCOL=http/json`}</Code>
       <p>Spans that follow the OpenTelemetry GenAI conventions (<code>gen_ai.*</code>) or OpenInference (<code>openinference.span.kind</code>, <code>input.value</code>, <code>output.value</code>) become LLM, tool and retrieval steps, with tokens, timing and errors. The agent name comes from <code>gen_ai.agent.name</code> or your <code>service.name</code>. Send OTLP as JSON; protobuf isn&apos;t supported yet.</p>
+
+      <h2 id="calls">📞 POST /calls: voice bots and phone AI</h2>
+      <p>Send each finished phone call. Every bot answer is checked like a chat reply, and the call is checked for the failure staff testing misses: the caller asked for a person and was never transferred, or the bot said it was transferring them and the transfer never happened.</p>
+      <ul>
+        <li><b>Vapi:</b> set your assistant&apos;s Server URL to <code>{`${API}/calls`}</code> with the header <code>Authorization: Bearer ap_live_...</code>. Only the <code>end-of-call-report</code> message is used; others are ignored.</li>
+        <li><b>Retell:</b> set the agent&apos;s webhook URL to <code>{`${API}/calls?key=ap_live_...`}</code> (Retell can&apos;t add headers). The <code>call_ended</code> event is used.</li>
+        <li><b>Any other provider:</b> POST the call as below.</li>
+      </ul>
+      <Fields rows={[
+        ["call_id", "string, required", "Your id for the call. Sending the same call twice is ignored."],
+        ["transcript", "array or string", "[{ role: user | assistant, content }], or text like \"AI: Hello\\nUser: Hi\"."],
+        ["transferred", "boolean", "Whether the call was transferred to a person. If you can't tell, send ended_reason instead."],
+        ["ended_reason", "string", "How the call ended, e.g. customer-hung-up or call_transfer."],
+        ["bot_name", "string", "Optional: which voice bot."],
+        ["duration_seconds", "number", "Optional."],
+      ]} />
+      <Code>{`curl -X POST ${API}/calls \\
+  -H "Authorization: Bearer $PROOFMYAI_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"call_id": "c_1029", "bot_name": "Front desk", "transferred": false,
+       "transcript": [{"role": "assistant", "content": "Village offices, how can I help?"},
+                      {"role": "user", "content": "Can I speak to someone in Parks and Recreation?"},
+                      {"role": "assistant", "content": "Sure, transferring you now."}]}'`}</Code>
+      <p>Response <code>201</code>: <code>{`{"call_id": "c_1029", "answers_checked": 2, "issues": [{"code": "CALL_NOT_TRANSFERRED", "severity": "high", ...}]}`}</code>. Codes: <code>CALL_NOT_TRANSFERRED</code> (high, alerted) and <code>TRANSFER_NOT_OFFERED</code> (medium, when you don&apos;t send whether it transferred and the bot never offered to).</p>
 
       <h2 id="workflow-runs">⚙️ POST /workflow-runs: n8n, Make and Zapier</h2>
       <p>Most people connect n8n or Make with an API key instead (see above). Use this endpoint for Zapier, self-built pipelines, or to push runs yourself. Send one run or an array of up to 500.</p>

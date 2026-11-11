@@ -11,7 +11,7 @@ import type { Exchange, Severity } from "./types";
 export type ConvFlag = "re_ask" | "restart" | "fallback" | "contradiction" | "confident_wrong" | SafetyFlag;
 
 /** Safety and security flags (shown with a shield, grouped in their own filter). */
-export const SAFETY_FLAGS: ConvFlag[] = ["injection", "attack_blocked", "prompt_leak", "data_leak", "toxic", "wrong_language", "no_ai_disclosure"];
+export const SAFETY_FLAGS: ConvFlag[] = ["injection", "attack_blocked", "prompt_leak", "data_leak", "toxic", "wrong_language", "no_ai_disclosure", "account_change"];
 /**
  * Flags that don't decide the fix on their own: an attack the bot refused (not a mistake), and
  * "stated as fact", which describes how a wrong answer was said (its article still needs fixing).
@@ -31,11 +31,12 @@ export const FLAG_LABELS: Record<ConvFlag, string> = {
   toxic: "Rude reply",
   wrong_language: "Wrong language",
   no_ai_disclosure: "Hid being an AI",
+  account_change: "Changed login details",
 };
 
 export const FLAG_SEVERITY: Record<ConvFlag, Severity> = {
   re_ask: "medium", restart: "medium", fallback: "low", contradiction: "high", confident_wrong: "high",
-  injection: "high", attack_blocked: "none", prompt_leak: "high", data_leak: "high", toxic: "high", wrong_language: "medium", no_ai_disclosure: "high",
+  injection: "high", attack_blocked: "none", prompt_leak: "high", data_leak: "high", toxic: "high", wrong_language: "medium", no_ai_disclosure: "high", account_change: "high",
 };
 
 interface Detail { key: string; label: string; ask: RegExp; given: RegExp }
