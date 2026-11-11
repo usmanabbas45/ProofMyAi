@@ -40,6 +40,7 @@ import { FOLLOWUP_OPTIONS, pollCrm, REQUIRED_OPTIONS, type CrmSource } from "@/l
 import { providerById } from "@/lib/crm/providers";
 import { addWatch, backtest, WATCH_MODULES, type WatchModule } from "@/lib/watches";
 import { translateWatch } from "@/lib/watchparse";
+import { runSelfTest } from "@/lib/selftest";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
@@ -1068,4 +1069,13 @@ export async function deleteCrmAction(form: FormData) {
   run("DELETE FROM crm_sources WHERE id = ? AND project_id = ?", id, p.id);
   for (const k of ["conn", "dupes", "bulk", "fields", "followup", "stale"]) resolveIncidents(p.id, `crm:${id}:${k}`);
   done(crmPath(p.id), { ok: "CRM disconnected and its data deleted." });
+}
+
+/** "Proof your checks work": runs the self-test now (and sends a test message to every alert channel). */
+export async function runSelfTestAction(form: FormData) {
+  const p = await project(form);
+  const path = `/app/p/${p.id}/checks`;
+  if (!rateLimit(`self-test:${p.id}`, 6, 3600000)) done(path, { error: "Too many self-tests. Try again in an hour." });
+  const r = await runSelfTest(p.id, "manual", { sendAlert: form.get("send_alert") === "1" });
+  done(path, r.ok ? { ok: "Self-test passed: every check fired on its test case." } : { error: "Self-test found a problem. See the results below." });
 }

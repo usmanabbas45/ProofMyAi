@@ -33,6 +33,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
     { href: `${base}/sheets`, label: "Google Sheets", icon: "📗", badge: get<{ n: number }>("SELECT COUNT(*) AS n FROM sheet_watches WHERE project_id = ? AND status IN ('problem', 'error')", project.id)?.n ?? 0 },
     { href: `${base}/uptime`, label: "Uptime", icon: "🟢", badge: get<{ n: number }>("SELECT COUNT(*) AS n FROM uptime_monitors WHERE project_id = ? AND status = 'down'", project.id)?.n ?? 0 },
     { href: `${base}/incidents`, label: "Incidents", icon: "🚨", badge: open },
+    { href: `${base}/checks`, label: "Check health", icon: "🩺", badge: get<{ ok: number }>("SELECT ok FROM self_tests WHERE project_id = ? ORDER BY id DESC LIMIT 1", project.id)?.ok === 0 ? 1 : 0 },
   ];
   const manage: NavItem[] = [
     ...(role === "owner" ? [{ href: `${base}/alerts`, label: "Alerts", icon: "🔔" }, { href: `${base}/settings`, label: "Settings & AI model", icon: "🛠️" }] : []),

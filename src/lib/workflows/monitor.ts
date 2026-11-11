@@ -69,7 +69,7 @@ export async function recordWorkflowRun(projectId: number, input: WorkflowRunInp
   return true;
 }
 
-const ago = (ms: number) => {
+export const ago = (ms: number) => {
   const m = Math.max(1, Math.round(ms / 60000));
   return m < 120 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} hours` : `${Math.round(m / 1440)} days`;
 };

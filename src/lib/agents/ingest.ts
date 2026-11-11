@@ -5,6 +5,7 @@ import { aiForProject, JudgeError, llmJudgeAgentRun } from "../judge/llm";
 import { verifyClaim } from "../outcome";
 import { recordTrace } from "../traces";
 import { watchSoon } from "../watches";
+import { finishRunStart, recordRunStart } from "./health";
 import { agentScore, AgentRunSchema, checkAgentRun, stepsLog, totals, type Issue } from "./checks";
 
 interface ProjectLimits {
@@ -17,7 +18,7 @@ interface ProjectLimits {
   store_text: number;
 }
 
-export type IngestResult = { ok: true; id: number; score: number; issues: Issue[] } | { ok: false; status: number; error: string };
+export type IngestResult = { ok: true; id: number; score: number; issues: Issue[]; started?: boolean } | { ok: false; status: number; error: string };
 
 export async function ingestAgentRun(projectId: number, body: unknown): Promise<IngestResult> {
   const parsed = AgentRunSchema.safeParse(body);
@@ -34,11 +35,24 @@ export async function ingestAgentRun(projectId: number, body: unknown): Promise<
     ? { ...parsed.data, goal: redactPII(parsed.data.goal, custom), final_output: redactPII(parsed.data.final_output, custom), steps: redactDeep(parsed.data.steps, custom) }
     : parsed.data;
 
-  const issues = checkAgentRun(data, { costBudgetUsd: p.agent_cost_budget_usd, maxSteps: p.agent_max_steps, maxMs: p.agent_max_ms });
-  const score = agentScore(issues);
-  const t = totals(data.steps);
   const existing = get("SELECT id FROM agent_runs WHERE project_id = ? AND external_id = ?", projectId, data.run_id);
   if (existing) return { ok: false, status: 409, error: `Run "${data.run_id}" was already recorded` };
+  // A start: remembered so a run that never finishes is alerted (see agents/health.ts).
+  if (data.status === "running") {
+    recordRunStart(projectId, data.run_id, data.agent_name);
+    return { ok: true, id: 0, score: 100, issues: [], started: true };
+  }
+  const startedAt = finishRunStart(projectId, data.run_id);
+
+  let issues = checkAgentRun(data, { costBudgetUsd: p.agent_cost_budget_usd, maxSteps: p.agent_max_steps, maxMs: p.agent_max_ms });
+  // A destructive action a person approved beforehand (same trace_id) is recorded, not alerted.
+  if (data.trace_id && issues.some((i) => i.code === "DESTRUCTIVE_ACTION")
+    && get("SELECT 1 FROM approvals WHERE project_id = ? AND trace_id = ? AND status = 'approved' AND auto = 0", projectId, data.trace_id)) {
+    issues = issues.map((i) => i.code === "DESTRUCTIVE_ACTION" ? { ...i, severity: "low" as const, message: `${i.message.split(". Actions that")[0]}. A person approved it first in Approvals.` } : i);
+  }
+  const score = agentScore(issues);
+  const t = totals(data.steps);
+  if (startedAt && t.ms === 0) t.ms = Math.max(0, Date.now() - Date.parse(startedAt));
 
   const { lastInsertRowid: id } = run(
     `INSERT INTO agent_runs (project_id, external_id, agent_name, goal, status, final_output, steps_json, total_cost_usd, total_ms, issues_json, score)

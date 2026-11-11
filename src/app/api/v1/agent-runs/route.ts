@@ -14,5 +14,6 @@ export async function POST(req: Request) {
   }
   const result = await ingestAgentRun(r.project.id, r.body);
   if (!result.ok) return json({ error: result.error }, result.status);
+  if (result.started) return json({ started: true, run_id: (r.body as { run_id?: string }).run_id }, 202);
   return json({ id: result.id, score: result.score, issues: result.issues }, 201);
 }
