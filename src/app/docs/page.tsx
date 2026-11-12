@@ -321,6 +321,8 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/json`}</Code>
         ["output_items", "integer", "How many items it produced. An empty \"success\" is flagged when it's unusual for this workflow (ProofMyAI learns its normal quiet spells)."],
         ["input_items", "integer", "How many items it received, e.g. new orders fetched. 0 in and 0 out is a quiet run (no alert); items in but 0 out is a high alert."],
         ["error_message", "string", "The error, if any."],
+        ["retries", "integer", "Optional: extra attempts the run needed (e.g. a node that succeeded on its 3rd try). Workflows that need retries in 20%+ of runs get a RETRY_RATE_HIGH alert, because a success that needed retries hides a flaky step."],
+        ["retry_of", "string", "Optional: the execution this run retries. n8n's own \"Retry execution\" re-runs are detected automatically."],
       ]} />
       <Code>{`curl -X POST ${API}/workflow-runs \\
   -H "Authorization: Bearer $PROOFMYAI_KEY" \\

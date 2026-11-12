@@ -22,7 +22,7 @@ async function getJson(url: string, headers: Record<string, string>): Promise<un
   return res.json();
 }
 
-type N8nExecution = { id: string | number; workflowId: string | number; status?: string; finished?: boolean; startedAt?: string; stoppedAt?: string | null };
+type N8nExecution = { id: string | number; workflowId: string | number; status?: string; finished?: boolean; startedAt?: string; stoppedAt?: string | null; mode?: string; retryOf?: string | number | null };
 
 /** Maps an n8n execution (public API v1) to ProofMyAI's run format. Exported for tests. */
 export function mapN8nExecution(e: N8nExecution, names: Map<string, string>): WorkflowRunInput | null {
@@ -39,6 +39,8 @@ export function mapN8nExecution(e: N8nExecution, names: Map<string, string>): Wo
     started_at: Number.isFinite(started) ? new Date(started).toISOString() : undefined,
     duration_ms: Number.isFinite(started) && Number.isFinite(stopped) ? Math.max(0, stopped - started) : null,
     error_message: status === "success" || status === "running" ? null : `n8n execution status: ${status}`,
+    // "Retry execution" on a failed run creates a new execution pointing at the failed one.
+    retry_of: e.retryOf != null && e.retryOf !== "" ? String(e.retryOf) : null,
   };
 }
 
