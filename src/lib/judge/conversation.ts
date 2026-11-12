@@ -1,5 +1,6 @@
 import { tokenize } from "../text";
 import { safetyFindings, type SafetyFlag } from "./safety";
+import { promiseIn } from "../promises";
 import type { Exchange, Severity } from "./types";
 
 /**
@@ -8,7 +9,7 @@ import type { Exchange, Severity } from "./types";
  * generic fallback replies and replies that contradict an earlier bot message.
  * Deterministic, so they also work with AI checking switched off.
  */
-export type ConvFlag = "re_ask" | "restart" | "fallback" | "contradiction" | "confident_wrong" | SafetyFlag;
+export type ConvFlag = "re_ask" | "restart" | "fallback" | "contradiction" | "confident_wrong" | "promise" | SafetyFlag;
 
 /** Safety and security flags (shown with a shield, grouped in their own filter). */
 export const SAFETY_FLAGS: ConvFlag[] = ["injection", "attack_blocked", "prompt_leak", "data_leak", "toxic", "wrong_language", "no_ai_disclosure", "account_change"];
@@ -16,7 +17,7 @@ export const SAFETY_FLAGS: ConvFlag[] = ["injection", "attack_blocked", "prompt_
  * Flags that don't decide the fix on their own: an attack the bot refused (not a mistake), and
  * "stated as fact", which describes how a wrong answer was said (its article still needs fixing).
  */
-export const INFO_FLAGS: ConvFlag[] = ["attack_blocked", "confident_wrong"];
+export const INFO_FLAGS: ConvFlag[] = ["attack_blocked", "confident_wrong", "promise"];
 
 export const FLAG_LABELS: Record<ConvFlag, string> = {
   re_ask: "Asked again",
@@ -24,6 +25,7 @@ export const FLAG_LABELS: Record<ConvFlag, string> = {
   fallback: "Fallback reply",
   contradiction: "Contradiction",
   confident_wrong: "Stated as fact",
+  promise: "Promised follow-up",
   injection: "Prompt injection",
   attack_blocked: "Attack blocked",
   prompt_leak: "Prompt leaked",
@@ -35,7 +37,7 @@ export const FLAG_LABELS: Record<ConvFlag, string> = {
 };
 
 export const FLAG_SEVERITY: Record<ConvFlag, Severity> = {
-  re_ask: "medium", restart: "medium", fallback: "low", contradiction: "high", confident_wrong: "high",
+  re_ask: "medium", restart: "medium", fallback: "low", contradiction: "high", confident_wrong: "high", promise: "low",
   injection: "high", attack_blocked: "none", prompt_leak: "high", data_leak: "high", toxic: "high", wrong_language: "medium", no_ai_disclosure: "high", account_change: "high",
 };
 
@@ -122,7 +124,10 @@ export function conversationFindings(e: Exchange): ConvFinding[] {
       }
     }
   }
-  // 5. Safety and security.
+  // 5. A promise of later work ("I'll check and get back to you"): tracked on live chats until a task exists.
+  const promise = promiseIn(answer);
+  if (promise) out.push({ flag: "promise", reason: `Promised a follow-up ("${promise.slice(0, 120)}"). Make sure a task or ticket exists for it.` });
+  // 6. Safety and security.
   out.push(...safetyFindings(e));
   return out;
 }

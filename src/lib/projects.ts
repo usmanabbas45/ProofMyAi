@@ -20,6 +20,7 @@ export interface Project {
   store_text: number;
   use_ai: number;
   reply_timeout_sec: number;
+  promise_hours?: number;
   report_brand: string | null;
   weekly_digest: number;
   last_digest_at: string | null;

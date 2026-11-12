@@ -25,6 +25,7 @@ const TOC = [
   ["agent-runs", "🤖 POST /agent-runs (AI agents)"],
   ["otel", "📡 OpenTelemetry traces"],
   ["calls", "📞 POST /calls (voice bots)"],
+  ["followups", "🤝 Promised follow-ups"],
   ["workflow-runs", "⚙️ POST /workflow-runs (n8n, Make, Zapier)"],
   ["errors", "⚠️ Errors & limits"],
   ["privacy", "🔒 Privacy & data"],
@@ -293,6 +294,19 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/json`}</Code>
                       {"role": "user", "content": "Can I speak to someone in Parks and Recreation?"},
                       {"role": "assistant", "content": "Sure, transferring you now."}]}'`}</Code>
       <p>Response <code>201</code>: <code>{`{"call_id": "c_1029", "answers_checked": 2, "issues": [{"code": "CALL_NOT_TRANSFERRED", "severity": "high", ...}]}`}</code>. Codes: <code>CALL_NOT_TRANSFERRED</code> (high, alerted) and <code>TRANSFER_NOT_OFFERED</code> (medium, when you don&apos;t send whether it transferred and the bot never offered to).</p>
+
+      <h2 id="followups">🤝 Promised follow-ups: &quot;I&apos;ll get back to you&quot;</h2>
+      <p>A reply like &quot;I&apos;ll check with the warehouse and get back to you&quot; breaks no policy, so answer checks pass it. But it&apos;s a promise, and if no task exists behind it the customer just waits. ProofMyAI tracks every promise in live chats until it&apos;s kept:</p>
+      <ul>
+        <li><b>A task exists:</b> send <code>task_id</code> with the bot&apos;s reply on <a href="#chat-events">/chat-events</a>, or call <code>POST /followups</code> when the task is created.</li>
+        <li><b>The bot followed up:</b> a later bot reply in the same conversation that isn&apos;t another promise.</li>
+      </ul>
+      <p>Otherwise you get <code>PROMISE_NOT_KEPT</code> once the deadline passes (24 hours by default, set in Settings), and <code>PROMISE_CHASED</code> straight away if the customer writes &quot;any update?&quot; first. On <a href="#check">/check</a>, a reply that promises a follow-up without a <code>task_id</code> comes back as <code>review</code>, with <code>promise</code> and <code>promise_has_task: false</code>.</p>
+      <Code>{`curl -X POST ${API}/followups \\
+  -H "Authorization: Bearer $PROOFMYAI_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"conversation_id": "chat_8812", "bot_name": "Website bot", "task_id": "odoo-task-4471"}'`}</Code>
+      <p>Use the same <code>conversation_id</code> and <code>bot_name</code> you send to /chat-events. Send <code>"status": "done"</code> if the follow-up already happened.</p>
 
       <h2 id="workflow-runs">⚙️ POST /workflow-runs: n8n, Make and Zapier</h2>
       <p>Most people connect n8n or Make with an API key instead (see above). Use this endpoint for Zapier, self-built pipelines, or to push runs yourself. Send one run or an array of up to 500.</p>

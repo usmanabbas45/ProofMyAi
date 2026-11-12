@@ -12,6 +12,7 @@ import { certaintySeverity, statedAsFact } from "../judge/certainty";
 import { conversationFindings, FLAG_SEVERITY, INFO_FLAGS, isSafetyFlag, type ConvFlag } from "../judge/conversation";
 import { isFrustrated } from "../sentiment";
 import { topicFor } from "../topics";
+import { trackReply } from "../promises";
 import { raiseIncident } from "../incidents";
 
 const SEVERITY_WEIGHT: Record<Severity, number> = { none: 0, low: 0.3, medium: 0.6, high: 1 };
@@ -117,6 +118,7 @@ export function storeGradedItem(auditId: number, e: Exchange, g: Grade, index: K
   const evidence = grade.evidence ?? (grade.sourceDoc ? bestSentence(index.docs.find((d) => d.title === grade.sourceDoc), e.question, e.answer, grade.reason) : null);
   const diagnosis = diagnose(grade.verdict, evidence, meta.retrieved);
   const storeText = get<{ s: number }>("SELECT p.store_text AS s FROM audits a JOIN projects p ON p.id = a.project_id WHERE a.id = ?", auditId)?.s ?? 1;
+  const originalAnswer = e.answer;
   if (!storeText) e = { ...e, question: NOT_STORED, answer: NOT_STORED };
   run(
     `INSERT INTO audit_items (audit_id, conversation_id, turn_index, question, answer, verdict, severity, reason, source_doc, confidence, features_json, risk, created_at, frustrated, rule_hit,
@@ -127,6 +129,11 @@ export function storeGradedItem(auditId: number, e: Exchange, g: Grade, index: K
     frustrated, hit, flags.length ? flags.join(",") : null,
     meta.latencyMs ?? null, meta.costUsd ?? null, meta.error ?? null, topic, evidence, diagnosis, meta.traceId ?? null,
   );
+  // Live conversations: track promised follow-ups until a task exists or the bot follows up (see lib/promises.ts).
+  const live = get<{ project_id: number; store_text: number }>(
+    "SELECT a.project_id, p.store_text FROM audits a JOIN projects p ON p.id = a.project_id WHERE a.id = ? AND a.status = 'live'", auditId,
+  );
+  if (live && meta.trackPromises !== false) trackReply(live.project_id, e.conversationId, originalAnswer, { taskId: meta.taskId, storeText: Boolean(live.store_text) });
   if (meta.traceId) {
     const projectId = get<{ p: number }>("SELECT project_id AS p FROM audits WHERE id = ?", auditId)?.p;
     if (projectId) recordTrace(projectId, meta.traceId, "chatbot", grade.verdict === "correct", `Chatbot reply: ${VERDICT_LABELS[grade.verdict]}`, grade.reason);
@@ -135,7 +142,7 @@ export function storeGradedItem(auditId: number, e: Exchange, g: Grade, index: K
 }
 
 /** Operational data a bot can send with a reply (live tracking). */
-export interface ReplyMeta { latencyMs?: number; costUsd?: number; error?: string; retrieved?: string[]; traceId?: string }
+export interface ReplyMeta { latencyMs?: number; costUsd?: number; error?: string; retrieved?: string[]; traceId?: string; taskId?: string; trackPromises?: boolean }
 
 /** Grades every chatbot reply in the conversations and stores the results. Never throws; failures are stored on the audit. */
 export async function executeAudit(auditId: number, projectId: number, conversations: Conversation[]): Promise<void> {
@@ -192,6 +199,7 @@ const BEHAVIOUR_FIX: Record<ConvFlag, string> = {
   fallback: "Bot coverage: generic fallback replies instead of answers",
   contradiction: "Bot consistency: contradicts its earlier replies",
   confident_wrong: "Bot tone: wrong answers stated as fact",
+  promise: "Bot follow-ups: promises of later action need a task behind them",
   injection: "Bot security: add prompt-injection protection to the system prompt",
   attack_blocked: "Bot security: attacks the bot refused (no action needed)",
   prompt_leak: "Bot security: stop the bot revealing its system prompt",

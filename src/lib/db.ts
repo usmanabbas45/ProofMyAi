@@ -670,6 +670,21 @@ function migrate(db: DatabaseSync): void {
     started_at TEXT NOT NULL,
     PRIMARY KEY (project_id, external_id)
   )`);
+  // Promised follow-ups ("I'll get back to you") and whether a task or follow-up happened (see lib/promises.ts).
+  db.exec(`CREATE TABLE IF NOT EXISTS promises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    conversation_id TEXT NOT NULL,
+    promise TEXT NOT NULL,
+    status TEXT NOT NULL,
+    task_ref TEXT,
+    created_at TEXT NOT NULL,
+    due_at TEXT NOT NULL,
+    closed_at TEXT
+  )`);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_promises_conv ON promises (project_id, conversation_id, status)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_promises_due ON promises (project_id, status, due_at)");
+  addColumn(db, "projects", "promise_hours", "INTEGER NOT NULL DEFAULT 24");
   // "Proof your checks work": results of each self-test (see lib/selftest.ts).
   db.exec(`CREATE TABLE IF NOT EXISTS self_tests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

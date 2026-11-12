@@ -53,6 +53,10 @@ export default async function SettingsPage({ params, searchParams }: { params: P
             <label htmlFor="rt">Alert when the chatbot hasn&apos;t replied within <span className="hint">(seconds; 0 = off. Checked every minute for live tracking, every 15 minutes for Twilio)</span></label>
             <input id="rt" name="reply_timeout_sec" type="number" min="0" max="86400" defaultValue={p.reply_timeout_sec} />
           </div>
+          <div className="field">
+            <label htmlFor="ph">Promised follow-ups must have a task or a follow-up within <span className="hint">(hours; when the bot says &quot;I&apos;ll get back to you&quot;)</span></label>
+            <input id="ph" name="promise_hours" type="number" min="1" max="720" defaultValue={p.promise_hours ?? 24} />
+          </div>
           <h3 style={{ marginTop: 18 }}>AI agent limits</h3>
           <div className="grid grid-3">
             <div className="field"><label htmlFor="b">Budget / run ($)</label><input id="b" name="agent_cost_budget_usd" type="number" step="any" min="0.0001" defaultValue={p.agent_cost_budget_usd} /></div>

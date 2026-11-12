@@ -13,6 +13,7 @@ import { sha256 } from "../security";
 import { normaliseRole } from "./parse";
 import { kbDocs, NOT_STORED, scoreFromSeverities, storeGradedItem, type ReplyMeta } from "./run";
 import { watchSoon } from "../watches";
+import { trackCustomerMessage } from "../promises";
 
 /**
  * Live chatbot monitoring: bots send each conversation (or each new reply) as it happens.
@@ -34,6 +35,8 @@ export const LiveChatSchema = z
     retrieved: z.array(z.string().max(20000)).max(50).optional(),
     /** Your id for one end-to-end request (chat → agent → workflow → CRM), to see everything it touched on one timeline. */
     trace_id: z.string().min(1).max(200).optional(),
+    /** The task or ticket your system created for this reply, when the reply promises a follow-up ("I'll get back to you"). */
+    task_id: z.string().min(1).max(200).optional(),
   })
   .refine((d) => d.messages || (d.answer ?? "").trim() !== "" || (d.question ?? "").trim() !== "", {
     message: "Send messages[], question + answer, or just question (a customer message the bot has not answered yet)",
@@ -255,12 +258,15 @@ export function conversationKey(chat: LiveChat): string {
 export async function processLiveChat(
   project: { id: number; redact_pii: number; mask_terms: string | null },
   raw: LiveChat,
-  opts: { wait?: boolean; receivedAt?: string } = {},
+  opts: { wait?: boolean; receivedAt?: string; trackPromises?: boolean } = {},
 ): Promise<{ exchanges: Exchange[]; grades: Promise<Grade[]> }> {
   const chat = project.redact_pii ? redactChat(raw, customMatcher(project.mask_terms)) : raw;
   trackPendingReply(project.id, chat, opts.receivedAt);
+  // A customer chasing a promised follow-up ("any update?") is alerted straight away.
+  const lastCustomer = [...toTurns(chat)].reverse().find((t) => t.role === "user")?.content;
+  if (lastCustomer) await trackCustomerMessage(project.id, conversationKey(chat), lastCustomer).catch((err) => console.error("[promises] failed:", err));
   const exchanges = newExchanges(project.id, chat);
-  const meta: ReplyMeta = { latencyMs: chat.latency_ms, costUsd: chat.cost_usd, error: chat.error, retrieved: raw.retrieved, traceId: chat.trace_id };
+  const meta: ReplyMeta = { latencyMs: chat.latency_ms, costUsd: chat.cost_usd, error: chat.error, retrieved: raw.retrieved, traceId: chat.trace_id, taskId: chat.task_id, trackPromises: opts.trackPromises ?? true };
   const grades = gradeLiveChat(project.id, exchanges, meta).finally(() => { alertMissingReplies(project.id).catch(() => 0); watchSoon(project.id); });
   if (!opts.wait) grades.catch((err) => console.error("[live] grading failed:", err));
   return { exchanges, grades };

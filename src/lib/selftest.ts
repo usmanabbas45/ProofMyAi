@@ -176,6 +176,7 @@ export function checkHealth(projectId: number): CheckHealth[] {
     ["Google Sheets", "broken cells, stale sheets", inc("code LIKE 'SHEET_%'", "SELECT COUNT(*) FROM sheet_watches WHERE project_id = ?1")],
     ["Heartbeats", "scheduled jobs that didn't check in", inc("code LIKE 'HEARTBEAT_%'", "SELECT COUNT(*) FROM job_heartbeats WHERE project_id = ?1")],
     ["Uptime", "downtime and slow responses", inc("module = 'uptime'", "SELECT COUNT(*) FROM uptime_monitors WHERE project_id = ?1")],
+    ["Promised follow-ups", "\"I'll get back to you\" with no task or follow-up", inc("code LIKE 'PROMISE_%'", "SELECT COUNT(*) FROM promises WHERE project_id = ?1")],
     ["Voice calls", "callers who asked for a person and weren't transferred", inc("code = 'CALL_NOT_TRANSFERRED'", "SELECT COUNT(*) FROM voice_calls WHERE project_id = ?1")],
   ];
   return rows.map(([name, what, r]) => ({ name, what, connected: r.c > 0, lastFired: r.last, fired30: r.n }));

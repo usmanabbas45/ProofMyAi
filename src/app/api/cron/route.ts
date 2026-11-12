@@ -10,6 +10,7 @@ import { alertMissingReplies } from "@/lib/audit/live";
 import { pollAllChatSources } from "@/lib/connectors";
 import { runDueSuites } from "@/lib/tests/runner";
 import { periodicAgentChecks } from "@/lib/agents/health";
+import { overduePromises } from "@/lib/promises";
 import { periodicWorkflowChecks } from "@/lib/workflows/monitor";
 import { pollAllSources } from "@/lib/workflows/pollers";
 import { runDueMonitors } from "@/lib/uptime";
@@ -57,6 +58,7 @@ async function runAll(started: number) {
   for (const p of projects) {
     await periodicWorkflowChecks(p.id);
     await periodicAgentChecks(p.id);
+    await overduePromises(p.id);
     await qualityChecks(p.id);
   }
   expireApprovals();
