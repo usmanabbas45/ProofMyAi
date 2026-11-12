@@ -471,13 +471,14 @@ export async function updateSettingsAction(form: FormData) {
   };
   run(
     `UPDATE projects SET name = ?, alert_webhook = ?, alert_email = ?, agent_cost_budget_usd = ?, agent_max_steps = ?, agent_max_ms = ?, agent_ai_review = ?,
-       weekly_digest = ?, report_brand = ?, reply_timeout_sec = ? WHERE id = ?`,
+       weekly_digest = ?, report_brand = ?, reply_timeout_sec = ?, promise_hours = ? WHERE id = ?`,
     str(form, "name", 100) || p.name, webhook, email,
     num("agent_cost_budget_usd", p.agent_cost_budget_usd, 0.0001, 10000),
     Math.round(num("agent_max_steps", p.agent_max_steps, 1, 100000)),
     Math.round(num("agent_max_seconds", p.agent_max_ms / 1000, 1, 86400) * 1000),
     form.get("agent_ai_review") ? 1 : 0, form.get("weekly_digest") ? 1 : 0,
-    str(form, "report_brand", 80) || null, Math.round(num("reply_timeout_sec", p.reply_timeout_sec, 0, 86400)), p.id,
+    str(form, "report_brand", 80) || null, Math.round(num("reply_timeout_sec", p.reply_timeout_sec, 0, 86400)),
+    Math.round(num("promise_hours", p.promise_hours ?? 24, 1, 720)), p.id,
   );
   done(path, { ok: "Settings saved." });
 }

@@ -33,7 +33,7 @@ describe("conversation checks", () => {
   it("catches restarts, fallbacks and contradictions", () => {
     expect(flags([["user", "hi"], ["assistant", "Hello! How can I help?"], ["user", "My car broke down"], ["assistant", "Hello! Welcome to AB Motors, how can I help you today?"]])).toContain("restart");
     expect(flags([["user", "hi"], ["assistant", "Hello! How can I help?"]])).toEqual([]);
-    expect(flags([["user", "Is my windscreen covered?"], ["assistant", "Thanks for your message, our team will get back to you shortly."]])).toEqual(["fallback"]);
+    expect(flags([["user", "Is my windscreen covered?"], ["assistant", "Thanks for your message, our team will get back to you shortly."]])).toEqual(["fallback", "promise"]);
     expect(flags([["user", "Warning light on"], ["assistant", "Please don't drive the car, we'll arrange recovery."], ["user", "ok what now"], ["assistant", "You can drive the car to our garage tomorrow."]])).toEqual(["contradiction"]);
     expect(flags([["user", "Warning light on"], ["assistant", "Please don't drive the car."], ["user", "ok"], ["assistant", "Again, do not drive the car until recovery arrives."]])).toEqual([]);
   });

@@ -25,6 +25,7 @@ export function purgeExpired(): { projects: number; items: number; agentRuns: nu
       agentRuns += run("DELETE FROM agent_runs WHERE project_id = ? AND created_at < datetime('now', ?)", p.id, cutoff).changes;
       testRuns += run("DELETE FROM test_runs WHERE project_id = ? AND created_at < datetime('now', ?)", p.id, cutoff).changes;
       run("DELETE FROM trace_events WHERE project_id = ? AND at < ?", p.id, new Date(Date.now() - p.retention_days * 86400000).toISOString());
+      run("DELETE FROM promises WHERE project_id = ? AND created_at < ?", p.id, new Date(Date.now() - p.retention_days * 86400000).toISOString());
     });
   }
   return { projects: projects.length, items, agentRuns, testRuns };

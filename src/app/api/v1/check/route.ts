@@ -8,6 +8,7 @@ import { DIAGNOSIS_TEXT } from "@/lib/judge/evidence";
 import { VERDICT_LABELS } from "@/lib/judge/types";
 import { topicFor } from "@/lib/topics";
 import { statedAsFact } from "@/lib/judge/certainty";
+import { promiseIn } from "@/lib/promises";
 import { areaAutonomy, decisionFor } from "@/lib/trust";
 
 const CheckSchema = z.object({
@@ -17,6 +18,8 @@ const CheckSchema = z.object({
   bot_name: z.string().max(100).optional(),
   retrieved: z.array(z.string().max(20000)).max(50).optional(),
   trace_id: z.string().min(1).max(200).optional(),
+  /** The task/ticket created for this reply, when it promises a follow-up. Without one, a promise is held for review. */
+  task_id: z.string().min(1).max(200).optional(),
 });
 
 /**
@@ -32,20 +35,24 @@ export async function POST(req: Request) {
   }
   const over = limitError(projectOwner(r.project.id), "conversations");
   if (over) return json({ error: over }, 402);
-  const { question, answer, bot_name, retrieved, trace_id } = parsed.data;
+  const { question, answer, bot_name, retrieved, trace_id, task_id } = parsed.data;
   // A fresh id per check unless the caller groups a conversation, so the same reply is always checked.
   const conversation_id = `${parsed.data.conversation_id ?? "check"}:${randomUUID().slice(0, 8)}`;
-  const result = await processLiveChat(r.project, { conversation_id, bot_name, question, answer, retrieved, trace_id }, { wait: true });
+  const result = await processLiveChat(r.project, { conversation_id, bot_name, question, answer, retrieved, trace_id, task_id }, { wait: true, trackPromises: false });
   const [g] = await result.grades;
   if (!g) return json({ error: "Could not check this answer" }, 500);
   const area = g.topic || topicFor(question, g.sourceDoc);
   const autonomy = areaAutonomy(r.project.id, area);
-  const decision = decisionFor(g.verdict, g.severity, autonomy);
+  // A promise of later work with no task behind it is held, however correct the rest of the reply is.
+  const promise = promiseIn(answer);
+  const unbacked = Boolean(promise && !task_id);
+  const decision = unbacked && decisionFor(g.verdict, g.severity, autonomy) === "allow" ? "review" : decisionFor(g.verdict, g.severity, autonomy);
   run("INSERT INTO presend_checks (project_id, decision, verdict, created_at) VALUES (?, ?, ?, ?)", r.project.id, decision, g.verdict, new Date().toISOString());
   return json({
     decision,
     verdict: g.verdict, label: VERDICT_LABELS[g.verdict], severity: g.severity, reason: g.reason,
-    stated_as_fact: statedAsFact(answer, g.verdict) !== null, source: g.sourceDoc, evidence: g.evidence ?? null, ...(g.diagnosis ? { diagnosis: g.diagnosis, diagnosis_detail: DIAGNOSIS_TEXT[g.diagnosis].text } : {}), area, area_autonomy: autonomy,
-    advice: decision === "allow" ? "Safe to send." : decision === "review" ? "Hold this reply for a person to approve, or send a safe fallback." : "Do not send. Hand the customer to a person.",
+    stated_as_fact: statedAsFact(answer, g.verdict) !== null,
+    ...(promise ? { promise, promise_has_task: !unbacked } : {}), source: g.sourceDoc, evidence: g.evidence ?? null, ...(g.diagnosis ? { diagnosis: g.diagnosis, diagnosis_detail: DIAGNOSIS_TEXT[g.diagnosis].text } : {}), area, area_autonomy: autonomy,
+    advice: decision === "allow" ? "Safe to send." : unbacked && decision === "review" ? "This reply promises a follow-up. Create the task or ticket first, then resend the check with task_id." : decision === "review" ? "Hold this reply for a person to approve, or send a safe fallback." : "Do not send. Hand the customer to a person.",
   }, 200);
 }
