@@ -19,9 +19,11 @@ export default async function WorkflowsPage({ params, searchParams }: { params: 
     "SELECT id, platform, name, base_url, scenario_ids, expected_interval_min, last_polled_at, last_error FROM workflow_sources WHERE project_id = ? ORDER BY id", p.id,
   );
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
-  const perWorkflow = all<{ platform: string; workflow_id: string; name: string; total: number; errors: number; last: string; avg_ms: number | null }>(
+  const perWorkflow = all<{ platform: string; workflow_id: string; name: string; total: number; errors: number; last: string; avg_ms: number | null; retried: number }>(
     `SELECT platform, workflow_id, MAX(workflow_name) AS name, COUNT(*) AS total, SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errors,
-            MAX(started_at) AS last, AVG(duration_ms) AS avg_ms
+            MAX(started_at) AS last, AVG(duration_ms) AS avg_ms,
+            SUM(CASE WHEN retry_of IS NULL AND status = 'success' AND COALESCE(retries, 0) > 0 THEN 1 ELSE 0 END)
+              + COUNT(DISTINCT CASE WHEN retry_of IS NOT NULL AND status = 'success' THEN retry_of END) AS retried
        FROM workflow_runs WHERE project_id = ? AND started_at >= ? GROUP BY platform, workflow_id ORDER BY errors DESC, total DESC`,
     p.id, since,
   );
@@ -154,13 +156,14 @@ export default async function WorkflowsPage({ params, searchParams }: { params: 
         {perWorkflow.length === 0 ? <Empty icon="⚙️" title="No executions yet">Connect n8n or Make above, or send runs to the webhook.</Empty> : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Workflow</th><th>Platform</th><th>Runs</th><th>Success</th><th>Errors</th><th>Avg time</th><th>Last run</th></tr></thead>
+              <thead><tr><th>Workflow</th><th>Platform</th><th>Runs</th><th>Success</th><th>Errors</th><th title="Runs that only succeeded after a retry: no error alert, but a flaky step">Needed retries</th><th>Avg time</th><th>Last run</th></tr></thead>
               <tbody>
                 {perWorkflow.map((w) => (
                   <tr key={`${w.platform}:${w.workflow_id}`}>
                     <td><strong>{w.name}</strong></td><td><Badge>{w.platform}</Badge></td><td>{w.total}</td>
                     <td><ScoreBadge score={Math.round(((w.total - w.errors) / w.total) * 100)} /></td>
                     <td>{w.errors ? <Badge tone="bad">{w.errors}</Badge> : "0"}</td>
+                    <td>{w.retried ? <Badge tone={w.retried / w.total >= 0.2 ? "warn" : "muted"}>{w.retried} · {Math.round((w.retried / w.total) * 100)}%</Badge> : "0"}</td>
                     <td className="sub">{w.avg_ms == null ? "–" : `${(w.avg_ms / 1000).toFixed(1)}s`}</td>
                     <td className="sub">{timeAgo(w.last)}</td>
                   </tr>

@@ -685,6 +685,9 @@ function migrate(db: DatabaseSync): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_promises_conv ON promises (project_id, conversation_id, status)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_promises_due ON promises (project_id, status, due_at)");
   addColumn(db, "projects", "promise_hours", "INTEGER NOT NULL DEFAULT 24");
+  // Retries that quietly succeed (see lib/retries.ts): extra attempts in a run, and n8n re-runs of a failed execution.
+  addColumn(db, "workflow_runs", "retries", "INTEGER");
+  addColumn(db, "workflow_runs", "retry_of", "TEXT");
   // "Proof your checks work": results of each self-test (see lib/selftest.ts).
   db.exec(`CREATE TABLE IF NOT EXISTS self_tests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

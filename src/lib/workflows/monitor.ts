@@ -20,6 +20,10 @@ export const WorkflowRunSchema = z.object({
   /** Items the run received (e.g. new rows or orders fetched). Tells "nothing to process" apart from "broken". */
   input_items: z.number().int().nonnegative().nullish(),
   error_message: z.string().max(5000).nullish(),
+  /** Extra attempts this run needed (node retries). A success that needed retries is counted, not ignored. */
+  retries: z.number().int().min(0).max(1000).nullish(),
+  /** The execution this one re-runs (n8n "Retry execution"). */
+  retry_of: z.string().max(200).nullish(),
   /** Your id for one end-to-end request, shared with /chat-events, /agent-runs, /approvals and /verify. */
   trace_id: z.string().min(1).max(200).optional(),
 });
@@ -38,10 +42,10 @@ export async function recordWorkflowRun(projectId: number, input: WorkflowRunInp
   const startedAt = input.started_at ? new Date(input.started_at).toISOString() : new Date().toISOString();
   const status = input.status === "crashed" ? "error" : input.status;
   const res = run(
-    `INSERT OR IGNORE INTO workflow_runs (project_id, platform, workflow_id, workflow_name, execution_id, status, started_at, duration_ms, output_items, input_items, error_message)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO workflow_runs (project_id, platform, workflow_id, workflow_name, execution_id, status, started_at, duration_ms, output_items, input_items, error_message, retries, retry_of)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     projectId, input.platform, input.workflow_id, name, input.execution_id, status, startedAt,
-    input.duration_ms ?? null, input.output_items ?? null, input.input_items ?? null, input.error_message ?? null,
+    input.duration_ms ?? null, input.output_items ?? null, input.input_items ?? null, input.error_message ?? null, input.retries ?? null, input.retry_of ?? null,
   );
   const silent = status === "success" && input.output_items === 0;
   // Runs once per newly recorded (or newly finished) run: the trace step, and a check of the customer's watches.
@@ -53,9 +57,9 @@ export async function recordWorkflowRun(projectId: number, input: WorkflowRunInp
   if (res.changes === 0) {
     // A run first reported as running/waiting has now finished: update it and evaluate the final status.
     const upd = run(
-      `UPDATE workflow_runs SET status = ?, workflow_name = ?, duration_ms = ?, output_items = ?, input_items = ?, error_message = ?
+      `UPDATE workflow_runs SET status = ?, workflow_name = ?, duration_ms = ?, output_items = ?, input_items = ?, error_message = ?, retries = COALESCE(?, retries)
         WHERE project_id = ? AND platform = ? AND execution_id = ? AND status IN ('running', 'waiting') AND ? NOT IN ('running', 'waiting')`,
-      status, name, input.duration_ms ?? null, input.output_items ?? null, input.input_items ?? null, input.error_message ?? null,
+      status, name, input.duration_ms ?? null, input.output_items ?? null, input.input_items ?? null, input.error_message ?? null, input.retries ?? null,
       projectId, input.platform, input.execution_id, status,
     );
     if (upd.changes === 0) return false;
