@@ -27,6 +27,7 @@ export interface ValueNumbers {
   problemsCaught: number;
   problemsResolved: number;
   medianFixMinutes: number | null;
+  policyChanges: number;
   byModule: { module: string; count: number }[];
 }
 
@@ -84,6 +85,7 @@ export function valueNumbers(projectId: number, p: Period): ValueNumbers {
     workflowFailures: inc(" AND module = 'workflows'"),
     problemsCaught: inc(""),
     problemsResolved: inc(" AND resolved = 1"),
+    policyChanges: inc(" AND code = 'POLICY_CHANGED'"),
     medianFixMinutes: fixTimes.length ? Math.round(fixTimes[Math.floor((fixTimes.length - 1) / 2)]) : null,
     byModule: all<{ module: string; count: number }>(`SELECT module, COUNT(*) AS count FROM incidents WHERE project_id = ? AND datetime(created_at) BETWEEN ${IN} GROUP BY 1 ORDER BY 2 DESC`, projectId, ...range),
   };
@@ -109,6 +111,7 @@ export function highlights(v: ValueNumbers): string[] {
   if (v.silentFailures) out.push(`${plural(v.silentFailures, "silent failure")} caught: automations that looked fine but weren't doing their job`);
   if (v.highRiskAnswers) out.push(`${plural(v.highRiskAnswers, "high-risk chatbot answer")} found and flagged for fixing`);
   if (v.missedHandovers) out.push(`${plural(v.missedHandovers, "conversation")} that needed a person spotted`);
+  if (v.policyChanges) out.push(`${plural(v.policyChanges, "policy change")} on the website caught, so the bot could be updated before quoting the old version`);
   if (v.medianFixMinutes != null && v.problemsResolved) out.push(`${plural(v.problemsResolved, "problem")} fixed, typically within ${durationLabel(v.medianFixMinutes)}`);
   return out;
 }

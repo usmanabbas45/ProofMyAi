@@ -686,6 +686,21 @@ function migrate(db: DatabaseSync): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_promises_due ON promises (project_id, status, due_at)");
   addColumn(db, "projects", "promise_hours", "INTEGER NOT NULL DEFAULT 24");
   // Retries that quietly succeed (see lib/retries.ts): extra attempts in a run, and n8n re-runs of a failed execution.
+  // Policy drift (see lib/policywatch.ts): imported help pages are re-read daily and versioned.
+  addColumn(db, "kb_docs", "source_url", "TEXT");
+  addColumn(db, "kb_docs", "version", "INTEGER NOT NULL DEFAULT 1");
+  addColumn(db, "kb_docs", "checked_at", "TEXT");
+  addColumn(db, "kb_docs", "check_error", "TEXT");
+  addColumn(db, "kb_docs", "pending_content", "TEXT");
+  addColumn(db, "kb_docs", "pending_hash", "TEXT");
+  addColumn(db, "kb_docs", "pending_since", "TEXT");
+  addColumn(db, "kb_docs", "dismissed_hash", "TEXT");
+  addColumn(db, "audit_items", "kb_version", "INTEGER");
+  // Pages imported before versioning kept their address at the end of the text ("Source: https://…").
+  for (const r of db.prepare("SELECT id, content FROM kb_docs WHERE source_url IS NULL AND content LIKE '%Source: http%'").all() as { id: number; content: string }[]) {
+    const m = r.content.match(/\n\nSource: (https?:\/\/\S+)\s*$/);
+    if (m) db.prepare("UPDATE kb_docs SET source_url = ? WHERE id = ?").run(m[1], r.id);
+  }
   addColumn(db, "workflow_runs", "retries", "INTEGER");
   addColumn(db, "workflow_runs", "retry_of", "TEXT");
   // "Proof your checks work": results of each self-test (see lib/selftest.ts).
