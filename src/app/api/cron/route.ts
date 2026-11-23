@@ -12,6 +12,7 @@ import { runDueSuites } from "@/lib/tests/runner";
 import { periodicAgentChecks } from "@/lib/agents/health";
 import { overduePromises } from "@/lib/promises";
 import { retryChecks } from "@/lib/retries";
+import { checkPolicyPages } from "@/lib/policywatch";
 import { periodicWorkflowChecks } from "@/lib/workflows/monitor";
 import { pollAllSources } from "@/lib/workflows/pollers";
 import { runDueMonitors } from "@/lib/uptime";
@@ -61,6 +62,7 @@ async function runAll(started: number) {
     await periodicAgentChecks(p.id);
     await overduePromises(p.id);
     await retryChecks(p.id);
+    await checkPolicyPages(p.id).catch((err) => console.error("[policy] check failed:", err));
     await qualityChecks(p.id);
   }
   expireApprovals();

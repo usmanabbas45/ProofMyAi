@@ -41,6 +41,7 @@ import { providerById } from "@/lib/crm/providers";
 import { addWatch, backtest, WATCH_MODULES, type WatchModule } from "@/lib/watches";
 import { translateWatch } from "@/lib/watchparse";
 import { runSelfTest } from "@/lib/selftest";
+import { acceptPolicyChange, dismissPolicyChange } from "@/lib/policywatch";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
@@ -134,12 +135,21 @@ export async function importKbUrlAction(form: FormData) {
   const existing = new Set(all<{ content: string }>("SELECT content FROM kb_docs WHERE project_id = ?", p.id).map((d) => d.content));
   const fresh = docs.filter((d) => !existing.has(d.content));
   transaction(() => {
-    for (const d of fresh) run("INSERT INTO kb_docs (project_id, title, content) VALUES (?, ?, ?)", p.id, d.title, `${d.content}\n\nSource: ${d.url}`);
+    for (const d of fresh) run("INSERT INTO kb_docs (project_id, title, content, source_url, checked_at) VALUES (?, ?, ?, ?, ?)", p.id, d.title, `${d.content}\n\nSource: ${d.url}`, d.url, new Date().toISOString());
   });
   const host = new URL(docs[0].url).hostname.replace(/^www\./, "");
   done(path, fresh.length
     ? { ok: `Imported ${fresh.length} page${fresh.length > 1 ? "s" : ""} from ${host}. Check the list below and remove anything that isn't a help or policy page.` }
     : { ok: `Those pages from ${host} are already in your knowledge base.` });
+}
+
+/** Policy drift: take the live page's new text as the next version of the article, or keep the current one. */
+export async function policyChangeAction(form: FormData) {
+  const p = await project(form);
+  const path = `/app/p/${p.id}/chatbot`;
+  const docId = Number(form.get("docId"));
+  const ok = form.get("decision") === "accept" ? acceptPolicyChange(p.id, docId) : dismissPolicyChange(p.id, docId);
+  done(path, ok ? { ok: form.get("decision") === "accept" ? "Article updated to the new version. Update your bot's knowledge too, then run your chatbot tests." : "Kept the current version. This change won't be alerted again." } : { error: "That change was already handled." });
 }
 
 export async function deleteKbDocAction(form: FormData) {

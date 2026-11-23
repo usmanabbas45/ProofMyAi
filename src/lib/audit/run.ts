@@ -13,6 +13,7 @@ import { conversationFindings, FLAG_SEVERITY, INFO_FLAGS, isSafetyFlag, type Con
 import { isFrustrated } from "../sentiment";
 import { topicFor } from "../topics";
 import { trackReply } from "../promises";
+import { articleVersion } from "../policywatch";
 import { raiseIncident } from "../incidents";
 
 const SEVERITY_WEIGHT: Record<Severity, number> = { none: 0, low: 0.3, medium: 0.6, high: 1 };
@@ -122,12 +123,13 @@ export function storeGradedItem(auditId: number, e: Exchange, g: Grade, index: K
   if (!storeText) e = { ...e, question: NOT_STORED, answer: NOT_STORED };
   run(
     `INSERT INTO audit_items (audit_id, conversation_id, turn_index, question, answer, verdict, severity, reason, source_doc, confidence, features_json, risk, created_at, frustrated, rule_hit,
-       conv_flags, latency_ms, cost_usd, bot_error, topic, evidence, diagnosis, trace_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       conv_flags, latency_ms, cost_usd, bot_error, topic, evidence, diagnosis, trace_id, kb_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     auditId, e.conversationId, e.turnIndex, e.question, e.answer, grade.verdict, grade.severity, grade.reason + note, grade.sourceDoc,
     grade.confidence, JSON.stringify(features), riskScore(model, features, grade.verdict, grade.confidence),
     frustrated, hit, flags.length ? flags.join(",") : null,
     meta.latencyMs ?? null, meta.costUsd ?? null, meta.error ?? null, topic, evidence, diagnosis, meta.traceId ?? null,
+    articleVersion(get<{ p: number }>("SELECT project_id AS p FROM audits WHERE id = ?", auditId)?.p ?? 0, grade.sourceDoc),
   );
   // Live conversations: track promised follow-ups until a task exists or the bot follows up (see lib/promises.ts).
   const live = get<{ project_id: number; store_text: number }>(

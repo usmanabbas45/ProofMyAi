@@ -24,7 +24,7 @@ const VERDICT_COLOR: Record<Verdict, string> = {
 
 interface Item {
   id: number; conversation_id: string; question: string; answer: string; verdict: Verdict; severity: string;
-  reason: string; source_doc: string | null; evidence: string | null; diagnosis: Diagnosis | null; risk: number | null; feedback: string | null; corrected_verdict: Verdict | null;
+  reason: string; source_doc: string | null; kb_version: number | null; evidence: string | null; diagnosis: Diagnosis | null; risk: number | null; feedback: string | null; corrected_verdict: Verdict | null;
   frustrated: number; rule_hit: string | null; conv_flags: string | null; latency_ms: number | null; bot_error: string | null;
 }
 
@@ -73,7 +73,7 @@ export default async function AuditPage({ params, searchParams }: {
   const shareUrl = audit.share_token ? `${process.env.APP_URL || ""}/r/${audit.share_token}` : null;
   const matching = get<{ n: number }>(`SELECT COUNT(*) AS n FROM audit_items WHERE audit_id = ? ${where}`, ...args)?.n ?? 0;
   const items = all<Item>(
-    `SELECT id, conversation_id, question, answer, verdict, severity, reason, source_doc, evidence, diagnosis, risk, feedback, corrected_verdict, frustrated, rule_hit,
+    `SELECT id, conversation_id, question, answer, verdict, severity, reason, source_doc, kb_version, evidence, diagnosis, risk, feedback, corrected_verdict, frustrated, rule_hit,
             conv_flags, latency_ms, bot_error
        FROM audit_items WHERE audit_id = ? ${where}
       ORDER BY ${sort === "risk" ? "COALESCE(risk, 0) DESC, id" : "id"} LIMIT ? OFFSET ?`,
@@ -229,7 +229,7 @@ export default async function AuditPage({ params, searchParams }: {
                       <div><div className="stat-label">Customer</div><div style={{ whiteSpace: "pre-wrap" }}>{it.question || <em className="faint">(no message)</em>}</div></div>
                       <div><div className="stat-label">Bot answer</div><div style={{ whiteSpace: "pre-wrap" }}>{it.answer}</div></div>
                     </div>
-                    <p style={{ marginTop: 12, marginBottom: 8 }}><strong>Why:</strong> {it.reason}{it.source_doc ? <> <span className="sub">· Related article: <strong>{it.source_doc}</strong></span></> : null}</p>
+                    <p style={{ marginTop: 12, marginBottom: 8 }}><strong>Why:</strong> {it.reason}{it.source_doc ? <> <span className="sub">· Related article: <strong>{it.source_doc}</strong>{it.kb_version ? ` (checked against v${it.kb_version})` : ""}</span></> : null}</p>
                     {it.diagnosis ? (
                       <p className="sub" style={{ margin: "0 0 8px" }}>🔎 <strong>{DIAGNOSIS_TEXT[it.diagnosis].label}:</strong> {DIAGNOSIS_TEXT[it.diagnosis].text}</p>
                     ) : null}

@@ -8,7 +8,8 @@ import { requireUser } from "@/lib/auth";
 import { all } from "@/lib/db";
 import { judgeProvider, llmAvailable } from "@/lib/judge/llm";
 import { projectAccess } from "@/lib/projects";
-import { addKbDocAction, addRuleAction, deleteAuditAction, deleteKbDocAction, deleteRuleAction, importKbUrlAction, startAuditAction } from "../actions";
+import { addKbDocAction, addRuleAction, deleteAuditAction, deleteKbDocAction, deleteRuleAction, importKbUrlAction, policyChangeAction, startAuditAction } from "../actions";
+import { policyDiff } from "@/lib/policywatch";
 import { Sparkline } from "@/components/charts";
 import { projectRules, RULE_KINDS } from "@/lib/rules";
 
@@ -24,8 +25,9 @@ export default async function ChatbotPage({ params, searchParams }: { params: Pr
   const user = await requireUser();
   const { project: p, role } = projectAccess(user.id, Number((await params).id));
   const flash = await searchParams;
-  const docs = all<{ id: number; title: string; chars: number; updated_at: string }>(
-    "SELECT id, title, LENGTH(content) AS chars, updated_at FROM kb_docs WHERE project_id = ? ORDER BY id DESC", p.id,
+  const docs = all<{ id: number; title: string; chars: number; updated_at: string; version: number; source_url: string | null; checked_at: string | null; check_error: string | null; content: string; pending_content: string | null; pending_since: string | null }>(
+    `SELECT id, title, LENGTH(content) AS chars, updated_at, version, source_url, checked_at, check_error, content, pending_content, pending_since
+       FROM kb_docs WHERE project_id = ? ORDER BY pending_content IS NULL, id DESC`, p.id,
   );
   const rules = projectRules(p.id);
   const trend = all<{ score: number }>(
@@ -86,8 +88,32 @@ export default async function ChatbotPage({ params, searchParams }: { params: Pr
               <table>
                 <tbody>
                   {docs.map((d) => (
-                    <tr key={d.id}>
-                      <td>📄 {d.title}</td>
+                    <tr key={d.id} style={d.pending_content ? { background: "var(--warn-bg, #fdf3dc)" } : undefined}>
+                      <td>
+                        📄 {d.title} <span className="faint">v{d.version}</span>
+                        {d.source_url ? <div className="faint" style={{ fontSize: 12 }} title={d.source_url}>🌐 {d.check_error ? `Couldn't re-read the page: ${d.check_error}` : `Checked against the website daily${d.checked_at ? ` · last ${timeAgo(d.checked_at)}` : ""}`}</div> : null}
+                        {d.pending_content ? (() => {
+                          const diff = policyDiff(d.content, d.pending_content);
+                          return (
+                            <div style={{ marginTop: 8 }}>
+                              <strong>🔔 Changed on the website {timeAgo(d.pending_since)}.</strong> Answers are still checked against v{d.version}.
+                              {diff.removed[0] ? <div className="sub">Was: &ldquo;{diff.removed[0].slice(0, 200)}&rdquo;</div> : null}
+                              {diff.added[0] ? <div className="sub">Now: &ldquo;{diff.added[0].slice(0, 200)}&rdquo;</div> : null}
+                              {Math.max(diff.removed.length, diff.added.length) > 1 ? <div className="faint">+{Math.max(diff.removed.length, diff.added.length) - 1} more changes</div> : null}
+                              <div className="row" style={{ gap: 8, marginTop: 6 }}>
+                                {(["accept", "keep"] as const).map((decision) => (
+                                  <form key={decision} action={policyChangeAction}>
+                                    <input type="hidden" name="projectId" value={p.id} />
+                                    <input type="hidden" name="docId" value={d.id} />
+                                    <input type="hidden" name="decision" value={decision} />
+                                    <SubmitButton className={decision === "accept" ? "btn btn-sm" : "btn btn-ghost btn-sm"} pendingText="…">{decision === "accept" ? `Update to v${d.version + 1}` : "Keep current"}</SubmitButton>
+                                  </form>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })() : null}
+                      </td>
                       <td className="faint">{Math.ceil(d.chars / 1000)}k chars</td>
                       <td style={{ textAlign: "right" }}>
                         <form action={deleteKbDocAction}>
