@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { headings, Prose } from "@/components/prose";
 import { POSTS } from "@/lib/blog";
 import { COMPARISONS } from "@/lib/compare";
+import { SOLUTIONS } from "@/lib/seo";
 import { indexNowKey, submitToIndexNow } from "@/lib/indexnow";
 import { llmsFullTxt, llmsTxt } from "@/lib/llms";
 import robots from "@/app/robots";
@@ -19,7 +20,7 @@ describe("blog content", () => {
       // Internal links must point at pages that exist.
       for (const [, href] of p.body.matchAll(/\]\((\/[^)#]*)/g)) {
         expect([
-          "/signup", "/docs", "/free-audit", "/tools/ai-chatbot-checker",
+          "/signup", "/docs", "/free-audit", "/tools/ai-chatbot-checker", "/tools/n8n-workflow-checker", ...SOLUTIONS.map((x) => `/solutions/${x.slug}`),
           "/solutions/ai-chatbot-monitoring", "/solutions/n8n-workflow-monitoring", "/solutions/ai-agent-monitoring",
           "/solutions/ai-chatbot-compliance-monitoring", "/solutions/ai-chatbot-monitoring-for-agencies", "/solutions/crm-monitoring", "/solutions/ai-agent-human-approval", "/solutions/grok-chatbot-monitoring",
           ...POSTS.map((x) => `/blog/${x.slug}`), ...COMPARISONS.map((c) => `/compare/${c.slug}`),

@@ -23,6 +23,61 @@ export interface Post {
 
 export const POSTS: Post[] = [
   {
+    slug: "n8n-workflow-risks-study",
+    title: "We Scanned 375 Public n8n Workflows: 29% Have Open Webhooks, 96% Have No Retries",
+    seoTitle: "375 n8n Workflows Scanned: The Most Common Silent Failure Risks",
+    description: "What a scan of 375 publicly shared n8n workflows found: open webhooks, API calls with no retry, no empty-result checks, pinned test data and pasted API keys. With the fix for each.",
+    date: "2026-11-28",
+    readMins: 5,
+    tags: ["n8n", "Research", "Workflow monitoring"],
+    answer: "In a scan of 375 publicly shared n8n workflows, 96% had API or AI calls with no retry, 29% had webhooks anyone could call, 22% never checked for empty results, 11% still contained pinned test data, and 5 had real-looking API keys pasted into nodes. None of these show up as errors in n8n, which is why they fail silently.",
+    body: `
+## What we scanned
+
+We ran 375 n8n workflows that people share publicly (templates and community examples) through the free [n8n Workflow Checker](/tools/n8n-workflow-checker). It reads the workflow JSON only: it doesn't run anything or connect to any service. These are shared workflows, not production systems, so treat the numbers as patterns rather than a census, but they're the patterns people copy into production.
+
+## The results
+
+| Risk | Share of workflows | Why it fails silently |
+|---|---|---|
+| API or AI calls with no retry | 96% | One timeout or rate limit and the run fails, or worse, continues with nothing |
+| Webhooks with no authentication | 29% | Anyone who finds the URL can trigger it: fake leads, spam orders, an AI bill |
+| No check for empty results | 22% | The run "succeeds" with 0 items, so nothing alerts |
+| Pinned test data left in | 11% | Old sample data, sometimes with real emails, ships with the workflow |
+| Real-looking API keys pasted into nodes | 5 workflows | Anyone who sees the workflow JSON gets the key |
+
+## Why none of this shows as an error
+
+n8n marks a run as failed when a node throws an error. Every risk above can produce a run that ends as **success**: a webhook that processed a spam request, an HTTP node set to "never error", or a step that returned zero rows. That's what a silent failure is: the dashboard is green and the work didn't happen.
+
+## How to fix each one
+
+- **No retry:** open the node → Settings → turn on **Retry On Fail** (3 tries, a few seconds apart) for HTTP Request and AI nodes. Then watch how often it retries: a step that needs retries every day is flaky and will fail for real.
+- **Open webhook:** set **Authentication** on the Webhook node to Header Auth and send that header from the app that calls it.
+- **Empty results:** add an IF node after the fetch: "number of items is 0" → alert, instead of continuing quietly.
+- **Pinned data:** unpin all data before activating (right-click the node → Unpin).
+- **Pasted keys:** move every key into an n8n Credential, then rotate the exposed key, because it has already been shared.
+
+## Checking the design isn't enough
+
+A scan checks how a workflow is built. It can't see a run that "succeeds" with 0 items at 3am, a trigger that quietly stopped firing, or an API key that expires next week. For that you need monitoring from outside the workflow: [n8n workflow monitoring](/solutions/n8n-workflow-monitoring) watches every execution and alerts you on failures, silent failures and workflows that stop running.
+`,
+    takeaways: [
+      "96% of the scanned workflows called APIs or AI models with no retry",
+      "29% had webhooks with no authentication",
+      "22% never checked for empty results, the most common cause of silent failures",
+      "None of these risks show up as errors in n8n",
+      "Scan the design for free, and monitor the runs for what a scan can't see",
+    ],
+    faqs: [
+      { q: "What is the most common risk in n8n workflows?", a: "API and AI calls with no retry: 96% of the 375 public workflows we scanned had at least one. A single timeout or rate limit then stops the run or lets it continue with nothing." },
+      { q: "How do I check my own n8n workflow for these risks?", a: "Paste it into the free n8n Workflow Checker at proofmyai.com/tools/n8n-workflow-checker. It runs in your browser, nothing is uploaded, and every problem comes with the fix." },
+      { q: "What is a silent failure in n8n?", a: "A run that n8n marks as successful but that didn't do its job, for example it processed 0 items, handled a spam webhook or swallowed an error. No error alert fires, so it goes unnoticed until someone asks why a lead or order is missing." },
+      { q: "How were the 375 workflows chosen?", a: "They are publicly shared n8n workflows (templates and community examples). They aren't production systems, so the numbers show common patterns rather than how every company's workflows look." },
+    ],
+    cta: { text: "Scan your n8n workflow free →", href: "/tools/n8n-workflow-checker" },
+  },
+  {
     slug: "catch-live-ai-chatbot-agent-workflow-errors",
     title: "Best Tools to Catch Live Errors in AI Chatbots, Agents and Workflows (2026)",
     seoTitle: "Best Tools to Catch Live AI Chatbot, Agent & Workflow Errors",
@@ -432,6 +487,8 @@ LangChain's platform for tracing, debugging and evaluating LLM applications, wit
 - **You are an enterprise with scripted flows and voice channels:** look at Cyara/Botium.
 
 Many teams combine two: developer evaluations before release, and live accuracy monitoring after.
+
+> Want the testing done for you? See [AI chatbot testing with ProofMyAI](/solutions/ai-chatbot-testing): test questions written from your docs, nightly and CI runs, and every live answer checked.
 `,
     takeaways: [
       "Decide what 'working' means first: accuracy, safety, hand-off, regression and live quality.",
@@ -603,6 +660,8 @@ A test set only covers the questions you thought of. Real customers ask everythi
 ## How ProofMyAI does this
 
 [ProofMyAI](/solutions/ai-chatbot-monitoring) grades every chatbot answer against your own help articles, runs your test questions every night, and alerts you by email, Slack or WhatsApp when an answer is wrong. Start with a [free audit](/signup) of a chat export.
+
+> Automate it: [AI chatbot testing](/solutions/ai-chatbot-testing) runs these checks every night and on every live answer.
 `,
     takeaways: [
       "Test with real customer questions and the facts a right answer must contain.",
@@ -678,6 +737,8 @@ The lesson from all of them: **the business owns what its bot says**, and proble
 ## How ProofMyAI helps
 
 [ProofMyAI](/solutions/ai-chatbot-monitoring) checks each chatbot answer against your help articles, labels it correct, not in docs, made up, should escalate or off policy, and alerts you about the dangerous ones. For regulated businesses there is a [compliance setup](/solutions/ai-chatbot-compliance-monitoring) with masking and results-only storage.
+
+> Catch these in your own bot: [AI hallucination detection](/solutions/ai-hallucination-detection) checks every live answer against your docs and can block it before it's sent.
 `,
     takeaways: [
       "A hallucination is a confident answer that isn't backed by your business's own information.",
@@ -748,6 +809,8 @@ One failed execution in a thousand can be noise. A jump from 1% to 30% failed ru
 ## How ProofMyAI monitors n8n
 
 [ProofMyAI](/solutions/n8n-workflow-monitoring) connects to n8n with an API key (n8n → Settings → n8n API), reads your executions every 15 minutes and alerts you on failures, silent failures, error-rate spikes, slow runs and workflows that stopped running. For faster alerts, it can also receive executions through a webhook. See the [setup docs](/docs#no-code).
+
+> New research: [we scanned 375 public n8n workflows](/blog/n8n-workflow-risks-study). 96% had API calls with no retry and 29% had open webhooks.
 `,
     takeaways: [
       "n8n workflows fail in three ways: errors, silent failures and simply not running.",
@@ -943,6 +1006,8 @@ Decide per agent what "normal" means: maximum steps, maximum seconds and maximum
 ## Automate the checklist
 
 Many of these checks can run automatically. [ProofMyAI](/solutions/ai-chatbot-monitoring) grades answers against your docs, enforces your own rules ("never say…", "always hand over when…", "must say…"), detects frustrated customers and missing replies, masks personal data, and alerts you. [Try it free](/signup).
+
+> Run this checklist automatically with [AI chatbot testing](/solutions/ai-chatbot-testing), and catch made-up answers live with [hallucination detection](/solutions/ai-hallucination-detection).
 `,
     takeaways: [
       "Most chatbot quality problems start in the knowledge base.",

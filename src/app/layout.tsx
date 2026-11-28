@@ -6,7 +6,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "ProofMyAI · AI Chatbot, AI Agent & n8n Workflow Monitoring", template: "%s · ProofMyAI" },
+  title: { default: "ProofMyAI · AI Chatbot Testing & Monitoring, AI Agents & n8n", template: "%s · ProofMyAI" },
   description: metaDescription(SITE_DESCRIPTION),
   applicationName: SITE_NAME,
   keywords: [

@@ -55,7 +55,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
               <tbody>{c.rows.map(([f, us, them]) => <tr key={f}><th scope="row">{f}</th><td>{us}</td><td>{them}</td></tr>)}</tbody>
             </table>
           </div>
-          <p className="faint" style={{ textAlign: "center", marginTop: 10 }}>Based on each product&apos;s public information, reviewed {COMPARE_REVIEWED}. {c.name} is a trademark of its owner; check their website for current features and pricing.</p>
+          <p className="faint" style={{ textAlign: "center", marginTop: 10 }}>Based on each product&apos;s public information, reviewed {c.reviewed ?? COMPARE_REVIEWED}. {c.name} is a trademark of its owner; check their website for current features and pricing.</p>
         </section>
 
         <section className="lp-section reveal">

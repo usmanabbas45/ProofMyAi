@@ -7,7 +7,7 @@ export const SAME_AS = [
 ];
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "contact@usmanabbas.dev";
 export const SITE_DESCRIPTION =
-  "ProofMyAI checks AI chatbot answers, AI agents, n8n/Make workflows, Google Sheets and CRMs, catches hallucinations and silent failures, and shows what to fix.";
+  "ProofMyAI tests and monitors AI chatbots, AI agents, voice bots, n8n/Make workflows, Google Sheets and CRMs, catches hallucinations and silent failures, and shows what to fix.";
 
 export const FAQS: { q: string; a: string }[] = [
   { q: "What does ProofMyAI do?", a: "ProofMyAI is a quality monitor for AI and automations. It checks every answer your AI chatbot gives against your own help docs, watches AI agents for loops, errors and runaway costs, lets you approve risky agent actions with one click, and monitors n8n and Make workflows, Google Sheets and CRMs like HubSpot and Salesforce for failures and silent failures. A trust report shows where your AI can decide alone, and when something breaks you get an alert and a clear fix list." },
@@ -17,11 +17,16 @@ export const FAQS: { q: string; a: string }[] = [
   { q: "Is my customers' data safe?", a: "Personal data such as emails, phone numbers, card numbers, IBANs, UK postcodes, number plates and names is masked automatically before anything is stored or sent to an AI model, and you can add your own words to mask. Each project can keep results only (no conversation text), delete data automatically after 7 to 365 days, or switch the AI provider off. A GDPR / UK GDPR Data Processing Agreement is available, and self-hosting is possible for regulated businesses." },
   { q: "Can agencies use it for clients?", a: "Yes. Create one project per client, share read-only client reports with your own agency name, export PDF and CSV, and send weekly summary emails. The Agency plan covers up to 20 client projects." },
   { q: "How much does it cost?", a: "ProofMyAI is free for 50 conversations a month. Paid plans start at $29 per month, and the Compliance plan for regulated businesses is $249. Pay yearly and get 2 months free (12 months for the price of 10). Every paid plan has a 14-day free trial and a 14-day money-back guarantee." },
+  { q: "How do I test my AI chatbot?", a: "Write real customer questions with the facts a correct answer must contain, ask your bot each one after every change, and also check live conversations against your help docs, because no test set covers everything customers ask. ProofMyAI writes the test questions from your docs and past mistakes, runs them every night and in CI, and checks every live answer." },
+  { q: "Which platforms monitor AI answers to real customer questions?", a: "Developer platforms such as Langfuse, LangSmith and Braintrust log and score answers inside your code. ProofMyAI is built for the business running the chatbot: every real customer answer is checked against your help docs without code, with the evidence, an alert and the article to fix. It also checks AI voice agent calls." },
+  { q: "Which tools alert you when an AI agent's tool calls start failing in production?", a: "ProofMyAI checks every agent run for tool errors, loops, runaway costs, empty output and destructive actions like deleting data, alerts when tools fail and only work after retries, and alerts when an agent goes quiet or starts runs that never finish. Send each run with one HTTP call or OpenTelemetry." },
   { q: "What is a silent failure in n8n or Make?", a: "A silent failure is a workflow run that reports success but produced nothing, for example an order sync that returned zero orders because an API changed. ProofMyAI flags these, along with failed runs, slow runs, error spikes and workflows that stopped running." },
 ];
 
 export interface Solution {
   slug: string;
+  /** Page language when not English (headings and buttons are translated). */
+  lang?: "de";
   title: string; // <title> and H1
   description: string; // meta description
   kicker: string;
@@ -267,6 +272,150 @@ SOLUTIONS.push({
     { q: "Can I put my agency's name on the reports?", a: "Yes. Client reports and share links show your agency's name, and you can save them as PDF to send each month." },
     { q: "How much does it cost for an agency?", a: "The Agency plan is $199 a month for up to 20 client projects and 15,000 audited conversations, with a 14-day free trial. Many agencies add it to their monthly retainer." },
     { q: "Can my clients log in?", a: "Yes. Invite a client as a viewer or editor of their own project only. They never see your other clients." },
+  ],
+});
+
+// ---- Pages for the searches people actually make (Search Console, November 2026) ----
+
+SOLUTIONS.push({
+  slug: "ai-chatbot-testing",
+  title: "AI Chatbot Testing Tool: Automated QA for Chatbots and AI Agents",
+  description: "Test your AI chatbot automatically: test questions written from your help docs and past mistakes, nightly and CI regression runs, and every live answer checked. No code needed.",
+  kicker: "AI chatbot testing",
+  intro: "Testing a chatbot once before launch isn't enough: a new prompt, model or help article can break answers that worked yesterday. ProofMyAI writes the test questions for you, asks your bot every night and in your deploy pipeline, and checks every live answer against your own docs.",
+  definition: "AI chatbot testing is checking that a chatbot gives correct, safe and helpful answers before and after it goes live. It combines test questions with the facts a right answer must contain, regression runs after every change, adversarial tests (prompt injection, \"let me talk to a human\"), and monitoring of real customer conversations, because no test set covers everything customers ask.",
+  metrics: [
+    { name: "Test pass rate", text: "The share of test questions whose answer contains the required facts and avoids the forbidden ones." },
+    { name: "Regressions", text: "Questions that passed before and fail now, usually after a prompt, model or help-article change." },
+    { name: "Hallucination rate in production", text: "Live answers that are made up or not supported by your docs, the gaps no test set covered." },
+    { name: "Escalation accuracy", text: "Whether complaints, legal threats and requests for a person reach a human." },
+    { name: "Safety failures", text: "Prompt injection that worked, leaked personal data, a bot claiming to be human, rude replies." },
+    { name: "Coverage", text: "How many of your help topics have at least one test question." },
+  ],
+  problems: [
+    "Chatbots are tested once before launch, then every prompt or model change goes live untested",
+    "Writing and maintaining test questions by hand takes days, so nobody does it",
+    "Answers change from run to run, so exact-match tests fail on good answers",
+    "Real customers ask questions no test set ever covered",
+  ],
+  steps: [
+    { title: "Tests written for you", text: "AI writes test questions from your help articles, your rules and the questions your bot already got wrong, including prompt-injection and \"talk to a human\" cases. You review them before they run. Any wrong answer found in a real chat becomes a test with one click." },
+    { title: "Run them every night and in CI", text: "ProofMyAI asks your bot every night and checks each answer includes the facts that matter and avoids what it must never say. Call POST /api/v1/test-runs from a GitHub Action to fail a deploy when answers get worse." },
+    { title: "Check live answers too", text: "Every real conversation is graded against your docs, with the exact sentence as evidence, so the questions your tests missed are caught as well. Alerts reach Slack, WhatsApp or email." },
+  ],
+  features: ["AI-written test questions from your docs and past mistakes", "Facts a right answer must include, and things it must never say", "Nightly regression runs against any HTTP chatbot endpoint", "CI / GitHub Actions: fail the build when answers get worse", "Prompt-injection, data-leak and hand-over tests", "Live answer checking with evidence from your docs", "Voice bot calls checked too (Vapi, Retell)", "No code needed for chatbot audits"],
+  tools: [
+    { name: "ProofMyAI", text: "No-code chatbot testing and live answer checking against your help docs, plus AI agent and n8n/Make monitoring. Built for businesses and agencies." },
+    { name: "Botium (Cyara)", text: "Enterprise conversational AI testing: functional, regression, performance and security tests for chatbots and voice bots, with connectors for many bot platforms. Has an open-source core." },
+    { name: "Promptfoo", text: "Open-source command-line tool for developers to evaluate and red-team prompts and models in code and CI." },
+    { name: "Bespoken", text: "Testing and monitoring for IVR, voice and chat, focused on contact centers, including load testing." },
+    { name: "Braintrust", text: "Evaluation and observability platform for AI engineering teams: datasets, experiments, scorers and production logging." },
+  ],
+  faqs: [
+    { q: "How do I test my AI chatbot?", a: "Write 20 to 50 real customer questions with the facts a correct answer must contain, ask your bot each one, and check the answers contain those facts and nothing you forbid. Add prompt-injection and \"talk to a human\" questions, re-run the whole set after every change, and also check live conversations against your help docs. ProofMyAI does all of this automatically." },
+    { q: "What is the best chatbot testing tool?", a: "It depends on who you are. Enterprises testing many bot platforms and voice channels often use Botium by Cyara. Developers who test prompts in code use Promptfoo or Braintrust. Businesses and agencies that want tests written for them, nightly runs and live answers checked against their help docs without code use ProofMyAI." },
+    { q: "How do you test a chatbot when answers change every time?", a: "Don't compare exact text. Check meaning: the facts a right answer must include (\"30 days\", \"original payment method\") and the claims it must never make (\"lifetime warranty\"). ProofMyAI checks each answer this way, so a reworded correct answer still passes." },
+    { q: "Can I run chatbot tests in CI before deploying?", a: "Yes. Save your test questions in ProofMyAI and call POST /api/v1/test-runs from your pipeline (for example a GitHub Action) against a preview URL. The run fails when answers get worse, so a broken prompt never reaches customers." },
+    { q: "What should a chatbot testing checklist include?", a: "Your most common questions with their correct facts, prices and numbers, questions your docs don't cover (the bot should say it doesn't know), complaints and legal threats that must reach a human, prompt-injection attempts, personal data handling, other languages, and a re-test after every change. See the full 25-point chatbot QA checklist on the ProofMyAI blog." },
+    { q: "Does it work with Intercom Fin, Chatbase, Voiceflow or a custom bot?", a: "Yes. Nightly tests call any HTTP endpoint that returns the bot's answer, and live answers can come from Intercom, WhatsApp, chat exports or one API call from any bot." },
+  ],
+});
+
+SOLUTIONS.push({
+  slug: "ai-hallucination-detection",
+  title: "AI Hallucination Detection: Monitor Chatbot Answers Live",
+  description: "Detect AI chatbot hallucinations in real time. Every answer is checked against your own help docs, made-up prices and policies are flagged with evidence, and wrong replies can be blocked before sending.",
+  kicker: "AI hallucination detection",
+  intro: "A hallucinating chatbot doesn't look broken: it sounds sure of itself while promising refunds, prices and deadlines you never offered. ProofMyAI checks each live answer against your own help docs, shows the exact sentence it contradicts, and can block it before the customer sees it.",
+  definition: "AI hallucination detection is checking whether an AI's answer is supported by a trusted source, such as your help articles and policies, and flagging answers that are made up, contradict the source or go beyond it. For customer-facing chatbots it has to run on every live answer, because hallucinations depend on the exact question and change when prompts, models or docs change.",
+  metrics: [
+    { name: "Hallucination rate", text: "The share of answers that are made up or contradict your docs." },
+    { name: "Stated as fact", text: "Wrong answers said with full confidence, the ones customers act on without double-checking." },
+    { name: "Not in docs", text: "Answers that go beyond what your help articles say, often the first sign of a knowledge gap." },
+    { name: "Accuracy per topic", text: "Which topics (refunds, shipping, pricing) the bot gets wrong most, so you fix the right article first." },
+  ],
+  problems: [
+    "The bot invents prices, discounts, deadlines and policies, and says them confidently",
+    "Nobody can read thousands of conversations to find the wrong ones",
+    "A policy changes on the website and the bot keeps quoting the old version",
+    "Wrong answers are discovered only when a customer complains",
+  ],
+  steps: [
+    { title: "Add your source of truth", text: "Import your help center or policy pages in one click (they're re-read daily, so policy changes are caught) or upload files." },
+    { title: "Every answer checked", text: "Each reply is graded: correct, not in docs, made up, should escalate or off policy, with the exact sentence from your docs as evidence and a \"stated as fact\" flag for confident wrong answers." },
+    { title: "Block, alert and fix", text: "The pre-send check returns allow, review or block before a reply goes out. Alerts reach Slack, WhatsApp or email, and Fix with AI writes the corrected help article." },
+  ],
+  features: ["Live hallucination detection against your own docs", "Evidence: the exact sentence the answer contradicts", "\"Stated as fact\" flag for confident wrong answers", "Pre-send check: allow, review or block", "Daily re-check of your policy pages for changes", "Fix with AI: corrected articles and a safer system prompt", "Works with any model: GPT, Claude, Gemini, Grok, Llama"],
+  faqs: [
+    { q: "How do I monitor an AI chatbot for hallucinations in real time?", a: "Send each conversation to a checker that compares the answer with your trusted docs as it happens. With ProofMyAI that's one API call (or a no-code connection for Intercom and WhatsApp); every answer is graded within seconds and problems alert you. To stop them reaching customers, call the pre-send check before replying." },
+    { q: "Which platforms monitor AI answers to real customer questions?", a: "Developer platforms such as Langfuse, LangSmith and Braintrust log and score answers inside your code. ProofMyAI is built for the business running the chatbot: it checks every real customer answer against your help docs without code, shows the evidence, and tells you which article to fix." },
+    { q: "Can hallucinations be detected without an AI model?", a: "Partly. Rule-based checks catch prices, numbers and promises that appear nowhere in your docs, missed escalations and broken business rules. An AI judge is needed to catch subtle contradictions. ProofMyAI uses both." },
+    { q: "Does it detect harmful or toxic chatbot outputs too?", a: "Yes. Safety checks flag rude or offensive replies, prompt-injection attacks that worked, leaked personal or card data, a bot claiming to be human, and a bot changing account login details without verification." },
+  ],
+});
+
+SOLUTIONS.push({
+  slug: "voice-bot-qa",
+  title: "Voice Bot QA & Monitoring: Check Every AI Phone Call",
+  description: "QA for AI voice agents and phone bots (Vapi, Retell or any provider): every answer in every call is checked, and callers who asked for a person but weren't transferred are flagged.",
+  kicker: "Voice bot QA",
+  intro: "AI phone agents fail in ways staff testing rarely catches: a caller asks for a person and the transfer number is wrong, or the bot promises a call back nobody makes. ProofMyAI checks every finished call, not just the ones you test.",
+  definition: "Voice bot QA is checking the quality of an AI voice agent's calls: whether its answers are correct and on policy, whether callers who need a person reach one, and whether the call ended the way it should. Because callers can't scroll back or re-read, a wrong answer or a failed transfer on a phone call costs more than in chat.",
+  problems: [
+    "Callers ask for a person and the transfer fails, or never happens",
+    "The bot says \"transferring you now\" and the call simply ends",
+    "Answers on calls are never reviewed because listening takes too long",
+    "Problems only surface when people complain in public",
+  ],
+  steps: [
+    { title: "Connect your voice platform", text: "Point a Vapi server URL (end-of-call report) or a Retell webhook at ProofMyAI, or send any provider's transcript with one API call." },
+    { title: "Every call checked", text: "Every bot answer is graded against your docs like a chat reply, and the call is checked for a person requested but no transfer, including transfers the bot promised that never happened." },
+    { title: "Alert and fix", text: "Failed transfers alert you straight away, with the call id and what the caller said." },
+  ],
+  features: ["Vapi and Retell webhooks, plus a generic API", "Every answer in every call checked against your docs", "\"Asked for a person, not transferred\" alerts", "Promised transfers that never happened", "Promised call-backs tracked until done", "One dashboard with your chatbots, agents and workflows"],
+  tools: [
+    { name: "ProofMyAI", text: "Checks every finished call's answers and transfers from Vapi, Retell or any provider. No code for Vapi and Retell." },
+    { name: "Bespoken", text: "Testing and monitoring for IVR, voice and chat in contact centers, including functional and load testing." },
+    { name: "Cyara", text: "Enterprise CX assurance for contact centers: testing and monitoring voice, IVR and digital channels." },
+  ],
+  faqs: [
+    { q: "How do I QA an AI voice agent?", a: "Test it before launch with scripted calls, then check real calls continuously: is each answer correct, did callers who asked for a person get transferred, and did promised call-backs happen? ProofMyAI checks every finished call from Vapi, Retell or any provider automatically." },
+    { q: "Can ProofMyAI tell if a call transfer failed?", a: "Yes. When the caller asked for a person and the call ended without a transfer, it raises an alert, including when the bot said it was transferring them. Vapi and Retell report how the call ended; other providers can send transferred: true/false." },
+    { q: "Which voice platforms does it support?", a: "Vapi (end-of-call report) and Retell (call_ended webhook) connect without code. Any other provider can POST the transcript to /api/v1/calls." },
+  ],
+});
+
+SOLUTIONS.push({
+  slug: "chatbot-qualitaetssicherung",
+  lang: "de",
+  title: "KI-Chatbot Qualitätssicherung: jede Antwort automatisch prüfen",
+  description: "Qualitätssicherung für KI-Chatbots und KI-Agenten: Jede Antwort wird gegen Ihre eigenen Hilfeartikel geprüft, erfundene Preise und Richtlinien werden erkannt, nächtliche Tests inklusive. Ohne Code.",
+  kicker: "KI-Chatbot Qualitätssicherung",
+  intro: "Ihr Kundenservice-Chatbot antwortet rund um die Uhr. ProofMyAI prüft jede Antwort gegen Ihre eigenen Hilfeartikel und Richtlinien, damit erfundene Preise, falsche Rückgaberegeln und fehlende Übergaben an einen Menschen auffallen, bevor Kunden sich beschweren.",
+  definition: "KI-Chatbot Qualitätssicherung bedeutet, systematisch zu prüfen, ob ein Chatbot korrekte, sichere und hilfreiche Antworten gibt: vor dem Start mit Testfragen und danach laufend für echte Kundengespräche. Geprüft werden Fakten gegen die eigenen Dokumente, die Übergabe an Menschen, Datenschutz, Sicherheit gegen Manipulation und Regressionen nach jeder Änderung.",
+  metrics: [
+    { name: "Halluzinationsrate", text: "Anteil der Antworten, die erfunden sind oder Ihren Dokumenten widersprechen." },
+    { name: "Bestehensrate der Tests", text: "Anteil der Testfragen, deren Antwort die nötigen Fakten enthält." },
+    { name: "Eskalationsquote", text: "Wie oft Beschwerden und Anfragen nach einem Menschen wirklich weitergeleitet werden." },
+    { name: "Genauigkeit pro Thema", text: "Welche Themen (Versand, Rückgabe, Preise) am häufigsten falsch beantwortet werden." },
+  ],
+  problems: [
+    "Der Bot erfindet Preise, Fristen und Rückgaberegeln, und zwar selbstbewusst",
+    "Verärgerte Kunden und rechtliche Drohungen werden nicht an einen Menschen übergeben",
+    "Niemand hat Zeit, Tausende Gesprächsverläufe zu lesen",
+    "Nach Änderungen an Prompt, Modell oder Hilfeartikeln wird nicht erneut getestet",
+  ],
+  steps: [
+    { title: "Wissensbasis anlegen", text: "Importieren Sie Ihr Hilfecenter oder Ihre Richtlinienseiten mit einem Klick, oder laden Sie Dateien hoch. Die Seiten werden täglich auf Änderungen geprüft." },
+    { title: "Jede Antwort geprüft", text: "Jede Antwort wird bewertet: korrekt, nicht in den Dokumenten, erfunden, hätte eskalieren müssen oder richtlinienwidrig, mit dem genauen Satz aus Ihren Dokumenten als Beleg." },
+    { title: "Testen, warnen, beheben", text: "Nächtliche Regressionstests, Warnungen per E-Mail, Slack oder WhatsApp und eine Liste, welcher Artikel korrigiert werden muss." },
+  ],
+  features: ["Prüfung jeder Antwort gegen Ihre Hilfeartikel", "Erkennung erfundener Preise und Richtlinien", "Nächtliche Regressionstests und Tests in der CI", "Erkennung fehlender Übergaben an Menschen", "Personenbezogene Daten werden vor der Speicherung maskiert", "Prüft auch, ob der Bot in der Sprache des Kunden antwortet"],
+  faqs: [
+    { q: "Was ist KI-Chatbot Qualitätssicherung?", a: "Die systematische Prüfung, ob ein KI-Chatbot korrekte, sichere und hilfreiche Antworten gibt: vor dem Start mit Testfragen und danach laufend für echte Gespräche, gegen die eigenen Hilfeartikel und Richtlinien." },
+    { q: "Wie teste ich einen KI-Chatbot?", a: "Sammeln Sie 20 bis 50 echte Kundenfragen mit den Fakten, die eine richtige Antwort enthalten muss, fragen Sie den Bot regelmäßig und nach jeder Änderung, und prüfen Sie zusätzlich die echten Gespräche gegen Ihre Hilfeartikel. ProofMyAI erstellt die Testfragen auf Wunsch automatisch." },
+    { q: "Funktioniert ProofMyAI mit deutschsprachigen Chats?", a: "Ja. Deutsche Gespräche werden gegen deutsche Hilfeartikel geprüft, und es wird erkannt, wenn der Bot in einer anderen Sprache antwortet als der Kunde. Die Oberfläche von ProofMyAI ist derzeit auf Englisch." },
+    { q: "Ist ProofMyAI DSGVO-konform nutzbar?", a: "Personenbezogene Daten wie E-Mail-Adressen, Telefonnummern, Kartennummern und IBANs werden vor der Speicherung und vor jeder KI-Prüfung maskiert, Aufbewahrungsfristen sind einstellbar, und ein Auftragsverarbeitungsvertrag (DPA) ist verfügbar. Die Server stehen in den USA." },
   ],
 });
 
