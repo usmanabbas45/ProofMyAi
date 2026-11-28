@@ -13,6 +13,8 @@ export interface Comparison {
   chooseUs: string[];
   chooseThem: string[];
   faqs: { q: string; a: string }[];
+  /** When this comparison was last checked, if later than COMPARE_REVIEWED. */
+  reviewed?: string;
 }
 
 export const COMPARE_REVIEWED = "October 2026";
@@ -109,6 +111,52 @@ export const COMPARISONS: Comparison[] = [
     faqs: [
       { q: "Is ProofMyAI a Helicone alternative?", a: "They solve different problems and work well together: Helicone logs and controls model requests; ProofMyAI checks whether the answers and actions were correct and alerts you when they weren't." },
       { q: "Does ProofMyAI track AI costs?", a: "Yes, per reply (send cost_usd) and per agent step, with alerts on runaway agent costs. It is not a proxy, so it doesn't cache or rate-limit requests." },
+    ],
+  },
+  {
+    slug: "botium-alternative",
+    name: "Botium",
+    reviewed: "November 2026",
+    title: "ProofMyAI vs Botium: a no-code Botium alternative for chatbot testing",
+    description: "Botium (by Cyara) is enterprise conversational AI testing for chatbots and voice bots. ProofMyAI tests and monitors chatbots, AI agents and n8n/Make without code. Compare features and fit.",
+    summary: "Botium, part of Cyara since 2022, is an enterprise platform for testing conversational AI: functional, regression, performance and security tests across dozens of chatbot and voice platforms, with an open-source core. ProofMyAI is for businesses and agencies that want their chatbot tested and every live answer checked against their own help docs without writing test scripts, plus monitoring for the AI agents and automations around it.",
+    rows: [
+      ["Built for", "Business owners, support teams, automation builders and agencies", "Enterprise QA and contact-center teams"],
+      ["Writing tests", "AI writes test questions from your docs and past mistakes; you review them", "Test scripts and conversation flows, with test data generation"],
+      ["Checks live customer answers against your help docs", "Every answer, with the exact sentence as evidence", "Not the focus: built for testing before release"],
+      ["Regression and CI testing", "Nightly runs and POST /test-runs from CI", "Yes, extensive, including performance and load testing"],
+      ["Voice bots", "Finished calls from Vapi, Retell or any provider checked for answers and failed transfers", "Voice and IVR testing as part of Cyara's platform"],
+      ["AI agents, n8n/Make, Sheets and CRMs", "Yes: loops, destructive actions, silent failures, missing leads", "Not a focus"],
+      ["Setup", "No code; one HTTP call for custom bots", "Enterprise onboarding and connectors"],
+      ["Pricing", "Free plan; paid from $29/month", "Enterprise pricing (see their site)"],
+    ],
+    chooseUs: ["You want your chatbot tested without writing test scripts", "You want every real customer answer checked, not only test cases", "You also run AI agents or n8n/Make automations", "You're a small team or an agency"],
+    chooseThem: ["You're an enterprise testing many bot platforms and channels", "You need load and performance testing at scale", "You already use Cyara for contact-center assurance"],
+    faqs: [
+      { q: "Is ProofMyAI a Botium alternative?", a: "For businesses and agencies that want chatbot tests written for them and every live answer checked without code, yes. Enterprises that need load testing and scripted tests across many platforms are better served by Botium." },
+      { q: "Is Botium still open source?", a: "Its core library is open source and still maintained under Cyara, which bought Botium in 2022. The commercial platform is sold by Cyara." },
+    ],
+  },
+  {
+    slug: "cyara-alternative",
+    name: "Cyara",
+    reviewed: "November 2026",
+    title: "ProofMyAI vs Cyara: AI chatbot and agent monitoring for smaller teams",
+    description: "Cyara is enterprise CX assurance for contact centers: voice, IVR and chatbot testing. ProofMyAI is no-code monitoring for chatbots, AI agents, voice bots and n8n/Make. Compare who each is for.",
+    summary: "Cyara is a customer experience assurance platform for large contact centers: it tests and monitors voice, IVR and digital channels, and includes Botium for chatbot testing. ProofMyAI is built for small and mid-size businesses and agencies: connect without code, check every chatbot or voice-bot answer against your own docs, and monitor the AI agents and automations behind it, from a free plan.",
+    rows: [
+      ["Built for", "Small and mid-size businesses, automation builders and agencies", "Large enterprises and contact centers"],
+      ["Chatbot answers checked against your help docs", "Every live answer, with evidence and a fix list", "Testing-focused, via Botium"],
+      ["Voice and IVR", "AI voice agent calls (Vapi, Retell, any provider): answers and failed transfers", "Extensive voice and IVR testing and monitoring"],
+      ["AI agents, n8n/Make, Sheets and CRMs", "Yes", "Not a focus"],
+      ["Setup", "Self-serve in minutes, no code", "Enterprise onboarding"],
+      ["Pricing", "Free plan; paid from $29/month", "Enterprise pricing (see their site)"],
+    ],
+    chooseUs: ["You want to start today, without a sales process", "Your bot runs on Intercom, WhatsApp, Vapi, Retell or your own code", "You also run AI agents and automations", "You're an agency managing several clients"],
+    chooseThem: ["You run a large contact center with IVR and many channels", "You need enterprise load testing and telecom-level assurance", "You need vendor support contracts at enterprise scale"],
+    faqs: [
+      { q: "Is ProofMyAI a Cyara alternative?", a: "For small and mid-size businesses and agencies running AI chatbots, voice agents and automations, yes: it's self-serve, starts free and checks every live answer. Large contact centers that need IVR and load testing across channels should look at Cyara." },
+      { q: "Does ProofMyAI test IVR systems?", a: "No. It checks AI voice agent calls (for example from Vapi or Retell) after they finish: the answers and whether callers who asked for a person were transferred. Traditional IVR testing is Cyara's and Bespoken's area." },
     ],
   },
 ];

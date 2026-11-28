@@ -185,7 +185,7 @@ function PlanButton({ p, yearly }: { p: (typeof PLANS)[number]; yearly: boolean 
 export const dynamic = "force-dynamic"; // approved testimonials appear without a redeploy
 
 export const metadata = {
-  title: { absolute: "ProofMyAI · AI Chatbot, AI Agent & n8n Workflow Monitoring" },
+  title: { absolute: "ProofMyAI · AI Chatbot Testing & Monitoring, AI Agents & n8n" },
   description: metaDescription(SITE_DESCRIPTION),
   alternates: { canonical: "/" },
 };
